@@ -1,47 +1,71 @@
 //assumes files are in order for the montage
-//two colors for now
+//any number of channels should be taken
+//TO DO:
+//Determine automatically parameters for the text?
 
 run("Close All");
 //setBatchMode(true);
 
-dir = getDirectory("Select Directory containing the Signal Probability Map");
-//dir = "C:/Users/herny/Desktop/SWC/Data/CorticoStriatal_Projections/MouseLinesCharacterization/607250_AxioZoom_20180706/Overview_slide_A_mCh/";
+//Parameters:
+angleToRot = 90;
+positionOfName = 2; //1,2 correspond to TopLeft, TopMiddle (only TopMiddle working at the moment).
+TextSize = 60;
+
+dir = getDirectory("Select Directory containing your data");
+//dir = "C:/Users/herny/Desktop/SWC/Data/CorticoStriatal_Projections/MouseLinesCharacterization/700325_AxioZoom_20180709/";
 print("Working in this directory: " + dir);
 //get the list of the files in the directory
 filesindir = getFileList(dir);
 //go through the files one by one
-for (i=0;i<filesindir.length;i++){
+for (i=0; i < filesindir.length; i++){
 	//open if raw
 	if (endsWith(filesindir[i],".czi")){
 		print("Opening " + filesindir[i]);
 		run("Bio-Formats (Windowless)", "open=" + dir + filesindir[i]);
-		ImageInProgress = getTitle();	
+		ImageInProgress = getTitle();
+		//rotate
+		run("Rotate... ", "angle=" + angleToRot + " grid=1 interpolation=Bilinear stack");
+		//get info about the data
+		if (i==0){
+			getDimensions(width, height, channels, slices, frames);
+		}	
 		//split channels
-		run("Split Channels");		
+		run("Split Channels"); //this all might fail if there is only one channel
+		//add name to channel 1
+		stringToWrite = File.getName(ImageInProgress);
+		WriteName ("C1-" + ImageInProgress, stringToWrite, positionOfName);
 	}
 }
+print("Number of channels = " + channels);
+//setBatchMode(false);
+//make a montage for each of the channels
+MCstring = ""; //string for merging the channels later
+for (j=1; j <= channels; j++){
+	//make a stack with the images of the first channel
+	run("Images to Stack", "name=C" + j + "_stack title=C" + j + " use");	
+	//make a montage
+	CustomMontage("C" + j + "_stack");
+	//string for merging the channels
+	MCstring = MCstring + "c" + j + "=" + getTitle() + " ";
+}
 
-//make a stack with the images of the first channel
-run("Images to Stack", "name=C1_stack title=C1 use");
-//rotate 180
-run("Rotate... ", "angle=180 grid=1 interpolation=Bilinear stack");
-//make a stack with the images of the second channel
-run("Images to Stack", "name=C2_stack title=C2 use");
-//rotate 180
-run("Rotate... ", "angle=180 grid=1 interpolation=Bilinear stack");
-
-
-//make a montage
-CustomMontage("C1_stack");
-C1tit = getTitle();
-CustomMontage("C2_stack");
-C2tit = getTitle();
-
-setBatchMode(false);
 //merge the channels
-run("Merge Channels...", "c1=" + C1tit + " c2=" + C2tit + " create");
+run("Merge Channels...", MCstring + "create");
+rename(File.getName(dir) + "_CZIMontage");
 
 
+function WriteName (imname, string, position){
+	selectWindow(imname);
+	setFont("SansSerif" , TextSize, "bold");
+	setJustification("center");
+	setColor(255, 255, 255);
+	//determine the position of the string
+	if (position == 2){
+		posx = getWidth()/2;
+		posy = 150;
+	}
+	drawString(string, posx, posy);
+}
 
 function CustomMontage(StackTit){
 	selectWindow(StackTit);
