@@ -2,12 +2,13 @@
 //any number of channels should be taken
 //TO DO:
 //Determine automatically parameters for the text?
+//Test for one channel
 
 run("Close All");
 //setBatchMode(true);
 
 //Parameters:
-angleToRot = 90;
+angleToRot = 180;
 positionOfName = 2; //1,2 correspond to TopLeft, TopMiddle (only TopMiddle working at the moment).
 TextSize = 60;
 
@@ -17,23 +18,30 @@ print("Working in this directory: " + dir);
 //get the list of the files in the directory
 filesindir = getFileList(dir);
 //go through the files one by one
+counter = 0;
 for (i=0; i < filesindir.length; i++){
 	//open if raw
 	if (endsWith(filesindir[i],".czi")){
 		print("Opening " + filesindir[i]);
 		run("Bio-Formats (Windowless)", "open=" + dir + filesindir[i]);
+		//get image name
 		ImageInProgress = getTitle();
+		stringToWrite = File.getName(ImageInProgress);
 		//rotate
 		run("Rotate... ", "angle=" + angleToRot + " grid=1 interpolation=Bilinear stack");
 		//get info about the data
-		if (i==0){
+		if (counter==0){
 			getDimensions(width, height, channels, slices, frames);
 		}	
-		//split channels
-		run("Split Channels"); //this all might fail if there is only one channel
+		//split channels if there is more than one
+		if (channels > 1){
+			run("Split Channels");
+		}else{
+			rename("C1-" + ImageInProgress);
+		}
 		//add name to channel 1
-		stringToWrite = File.getName(ImageInProgress);
 		WriteName ("C1-" + ImageInProgress, stringToWrite, positionOfName);
+		counter += 1;
 	}
 }
 print("Number of channels = " + channels);
