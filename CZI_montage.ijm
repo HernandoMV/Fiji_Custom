@@ -11,17 +11,19 @@ run("Close All");
 angleToRot = 180;
 positionOfName = 2; //1,2 correspond to TopLeft, TopMiddle (only TopMiddle working at the moment).
 TextSize = 60;
+FileExtension = "_Overview.czi";
 
 dir = getDirectory("Select Directory containing your data");
 //dir = "C:/Users/herny/Desktop/SWC/Data/CorticoStriatal_Projections/MouseLinesCharacterization/700325_AxioZoom_20180709/";
 print("Working in this directory: " + dir);
 //get the list of the files in the directory
 filesindir = getFileList(dir);
+print(filesindir.length + " files in directory");
 //go through the files one by one
 counter = 0;
 for (i=0; i < filesindir.length; i++){
 	//open if raw
-	if (endsWith(filesindir[i],".czi")){
+	if (endsWith(filesindir[i],FileExtension)){
 		print("Opening " + filesindir[i]);
 		run("Bio-Formats (Windowless)", "open=" + dir + filesindir[i]);
 		//get image name
