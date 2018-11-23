@@ -8,10 +8,11 @@ run("Close All");
 //setBatchMode(true);
 
 //Parameters:
-angleToRot = 180;
+angleToRot = 90;
 positionOfName = 2; //1,2 correspond to TopLeft, TopMiddle (only TopMiddle working at the moment).
 TextSize = 60;
-FileExtension = "_Overview.czi";
+//FileExtension = "_Overview.czi";
+FileExtension = ".tif";
 
 dir = getDirectory("Select Directory containing your data");
 //dir = "C:/Users/herny/Desktop/SWC/Data/CorticoStriatal_Projections/MouseLinesCharacterization/700325_AxioZoom_20180709/";
@@ -26,11 +27,12 @@ for (i=0; i < filesindir.length; i++){
 	if (endsWith(filesindir[i],FileExtension)){
 		print("Opening " + filesindir[i]);
 		run("Bio-Formats (Windowless)", "open=" + dir + filesindir[i]);
+		//open(dir + filesindir[i]);
 		//get image name
 		ImageInProgress = getTitle();
 		stringToWrite = File.getName(ImageInProgress);
 		//rotate
-		run("Rotate... ", "angle=" + angleToRot + " grid=1 interpolation=Bilinear stack");
+		run("Rotate... ", "angle=" + angleToRot + " grid=1 interpolation=Bilinear enlarge stack");
 		//get info about the data
 		if (counter==0){
 			getDimensions(width, height, channels, slices, frames);

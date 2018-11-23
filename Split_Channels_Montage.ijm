@@ -87,7 +87,8 @@ for(i=1; i<=channels; i++){
 run("RGB Color");
 rename("im2");
 //Add Scale Bar
-run("Scale Bar...", "width=50 height=5 font=18 color=White background=None location=[Lower Right] bold overlay");
+TextSize = round(getHeight/25);
+run("Scale Bar...", "width=50 height=5 font="+TextSize+" color=White background=None location=[Lower Right] bold overlay");
 run("Flatten"); //not sure if this is necessary
 rename("C0-" + imtit); //for the order
 
