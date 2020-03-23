@@ -1,3 +1,8 @@
+# Hernando M. Vergara
+# March 2020. Coronavirus quarantine :)
+# CubifyROI.py takes as input a folder containing images in trios (channels) with names 'DAPI', 'D2', and 'D1'
+# It subdivides the drawn ROIs into square rois within that ROI, and saves them independently
+
 from javax.swing import JFrame, JButton, JPanel, JTextField, JSlider, JCheckBox, JList, JLabel, BorderFactory, JScrollPane, SwingConstants, DefaultListModel
 from java.awt import GridLayout, Dimension, GraphicsEnvironment, BorderLayout, Label, Color, Font
 from ij.io import OpenDialog, Opener, DirectoryChooser, FileSaver
