@@ -342,7 +342,7 @@ def get_corners(roi, L):
         xc = x - x % L
         yc = y - y % L
         corners.add((xc, yc))
-    
+
     return corners
 
 

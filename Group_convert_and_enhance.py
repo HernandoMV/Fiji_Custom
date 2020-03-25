@@ -3,135 +3,144 @@
 # based on GroupPercentileThresholding.py
 # Pipeline to normalize intensities for each channel in each animal, from a group of
 # 16-bit images and convert to 8-bit
-# This is supposed to be used after CZI_SlideScanner_ROIsubdivider 
+# This is supposed to be used after CZI_SlideScanner_ROIsubdivider.py
 
 from ij import IJ, ImagePlus, WindowManager
 from ij.plugin import FolderOpener, Duplicator, ZProjector
-from ij.plugin.filter import GaussianBlur
 from ij.io import Opener, DirectoryChooser
 import sys
 import os
 import math
+from os import path
+from ij.process import ImageConverter
+import random
 
-def getCfosImages(path):
-	listCfos = []
-	listAll = os.listdir(path)
-	for f in listAll:
-		if 'cFos.tif' in f:
-			listCfos.append(f)
-	return listCfos 
+
+def getTifImages(path):
+    listTif = []
+    listAll = os.listdir(path)
+    for f in listAll:
+        if '.tif' in f:
+            listTif.append(f)
+    return listTif
+
 
 def UniqueMouseIDs(array):
-	mouseIds = []
-	for i in array:
-		mouseIds.append(i.split('_')[0])
-	return list(set(mouseIds))
+    mouseIds = []
+    for i in array:
+        mouseIds.append(i.split('_')[0])
+    return list(set(mouseIds))
 
-def getMouseCfos(array, mouseID):
-	arrToRet = []
-	for i in array:
-		if mouseID in i:
-			arrToRet.append(i)
-	return arrToRet
 
-def FindThreholds(mainpath, listOfImages, quantArray):
-	#initialize the pixels array
-	pix = []
-	#create a for loop here
-	for image in listOfImages:
-		#open the image
-		IJ.log('Getting pixels in Image ' + image)
-		imp_orig = Opener().openImage(mainpath + image)
-		imp_GB = blurImage(imp_orig)
-		imp_orig.close()
-		imp_GB.hide()
-		#get the pixel values
-		pix = getPixelValues(imp_GB, pix)
-		imp_GB.close()
-		
-	#get the percentile values to threshold
-	IJ.log('Quantifying thresholds...')
-	percs = []
-	for q in quantArray:
-		percs.append(percentile(pix, q))	
-	return percs
-	
+def getMouseFiles(array, mouseID):
+    arrToRet = []
+    for i in array:
+        if mouseID in i:
+            arrToRet.append(i)
+    return arrToRet
+
+
+def getNumberOfChannels(MouseIDFiles):
+    # returns the number of channels based on the ending of the files (..._channel-1.tif)
+    return len(set([x.split('_channel-')[-1] for x in MouseIDFiles]))
+
+
+def getChannelFiles(MouseIDFiles, channel):
+    # returns a selection of a list based no the ending of the files
+    return [x for x in MouseIDFiles if x.endswith("-" + str(channel) + ".tif")]
+
+
+def get_enhance_bounds(chf_fpaths, low_theshold, high_threshold):
+    # initialize the pixels array
+    pix = []
+    # open 100 images max (time consuming)
+    if len(chf_fpaths) > 100:
+        chf_fpaths = random.sample(chf_fpaths, 100)
+    # create a for loop here
+    counter = 1
+    for image_path in chf_fpaths:
+        # open the image
+        print "Getting pixels in Image " + image_path
+        print str(counter) + " / " + str(len(chf_fpaths))
+        imp_orig = Opener().openImage(image_path)
+        # get the pixel values
+        image_pix = list(imp_orig.getProcessor().getPixels())
+        imp_orig.close()
+        imp_orig.flush()
+        # select randomly 10% of the pixels (maybe memory issues)
+        image_pix_sel = random.sample(image_pix, int(len(image_pix) * 0.1))
+        pix = pix + image_pix_sel
+
+    # get the percentile values to threshold
+    IJ.log('Quantifying pixel values for contrast enhancement...')
+    low_pix = percentile(pix, low_theshold)
+    high_pix = percentile(pix, high_threshold)
+
+    return low_pix, high_pix
+
+
 def percentile(data, percentile):
     size = len(data)
-    return sorted(data)[int(math.ceil((size * percentile) / 100))-1]
-
-def getPixelValues(imp, vector):
-	#appends the pixel values of an image to a given vector
-	for k in range(imp.getStackSize()):
-		ip = imp.getProcessor()
-		for j in range(ip.getHeight()):
-			for i in range(ip.getWidth()):
-				vector.append(ip.getPixel(i, j))
-	return vector
-
-def blurImage(ip):
-	#duplicate
-	imp_dup = Duplicator().run(ip)
-	#blur it
-	imp_dup.show()
-	IJ.run(imp_dup, "Gaussian Blur...", "sigma=1");
-	imp_GB = IJ.getImage()
-	return(imp_GB)
+    return sorted(data)[int(math.ceil((size * percentile) / 100)) - 1]
 
 
-#Main 
+# Main
 if __name__ in ['__builtin__', '__main__']:
-	IJ.run("Close All")
-	In_dir = DirectoryChooser("Select the directory containing your cropped images").getDirectory()
-	#Directory to save stuff
-	Out_dir = In_dir[:-1] + "--GPTprocessed/"
-	if not os.path.exists(Out_dir):
-		os.makedirs(Out_dir)
-	else:
-		print "Output directory exists already, data might be overwritten"
-		
-	#crop images ?
+    # enhace the images by saturating 0.1% of the pixels (bottom and top)
+    low_theshold = 0.1
+    high_threshold = 99.9
 
-	#get c-Fos
-	ListCfos = getCfosImages(In_dir)
-	#if it is empty stop
-	if len(ListCfos)==0:
-		os.rmdir(Out_dir)
-		sys.exit('No c-Fos images found')
-		
-	
-	#get unique MouseIDs
-	MouseIDs = UniqueMouseIDs(ListCfos)
+    IJ.run("Close All")
+    In_dir = DirectoryChooser("Select the directory containing your ROI images").getDirectory()
+    # Directory to save stuff
+    Out_dir = In_dir[:-1] + "--Gce_processed"
+    if not os.path.exists(Out_dir):
+        os.makedirs(Out_dir)
+    else:
+        print "Output directory exists already, data might be overwritten"
 
-	for MouseID in MouseIDs:
-		IJ.log("\nProcessing mouse " + MouseID)
-		#get the list of cFos images for a specific mouse
-		MouseIDcFos = getMouseCfos(ListCfos, MouseID)
-		#find the threshold values using the quantiles
-		percentiles = [98.5, 99.5, 99.9]
-		thresholds = FindThreholds(In_dir, MouseIDcFos, percentiles)
-		IJ.log('Thresholds for percentiles ' + str(percentiles) + ' selected to ' + str(thresholds))
-		#threshold and save images for each threshold value
-		for i, threshold in enumerate(thresholds):
-			# create directory
-			Perc_Out_dir = Out_dir + "percentile_" + str(percentiles[i]) + "/"
-			if not os.path.exists(Perc_Out_dir):
-				os.makedirs(Perc_Out_dir)
-			IJ.log('Processing ' + MouseID + ' for percentile ' + str(percentiles[i]))
-			for image in MouseIDcFos:
-				#open image
-				imp_orig = Opener().openImage(In_dir + image)
-				#gaussian blur
-				imp_GB = blurImage(imp_orig)
-				imp_orig.close()
-				#threshold
-				imp_GB.getProcessor().threshold(threshold)
-				#save
-				newname = image.split('.')[0] + '_GPT_' + str(percentiles[i]) + '.tif'
-				IJ.saveAsTiff(imp_GB, Perc_Out_dir + newname)
-				imp_GB.close()
-				
-		IJ.log('Mouse ' + MouseID + ' processed')	
+    # get tif files
+    ListTif = getTifImages(In_dir)
+    # if it is empty stop
+    if len(ListTif) == 0:
+        os.rmdir(Out_dir)
+        sys.exit('No .tif images found, bye')
 
-	
-	print "DONE, find your results in " + Out_dir
+    # get unique MouseIDs
+    MouseIDs = UniqueMouseIDs(ListTif)
+
+    for MouseID in MouseIDs:
+        IJ.log("\nProcessing mouse " + MouseID)
+        # get the list of cFos images for a specific mouse
+        MouseIDFiles = getMouseFiles(ListTif, MouseID)
+        # calculate the number of channels
+        number_of_channels_in_mouse = getNumberOfChannels(MouseIDFiles)
+        print str(MouseID) + " contains " + str(number_of_channels_in_mouse) + " distinct channels"
+        # run the function for each of the channels
+        for channel in range(1, (number_of_channels_in_mouse + 1)):
+            channel_files = getChannelFiles(MouseIDFiles, channel)
+            # get the full path
+            chf_fpaths = [path.join(In_dir, x) for x in channel_files]
+            # get the minimum and maximum pixel value
+            min_pixval, max_pixval = get_enhance_bounds(chf_fpaths, low_theshold, high_threshold)
+            IJ.log("Found pixel bounds " + str(min_pixval) + " and " + str(max_pixval) + " for channel " + str(channel))
+            counter = 1
+            for chfile in chf_fpaths:
+                # open file
+                ch_img = Opener().openImage(chfile)
+                ch_tit = ch_img.getTitle()
+                # adjust contrast
+                ch_img.getProcessor().setMinAndMax(min_pixval, max_pixval)
+                # convert to 8-bit (which also applies the contrast)
+                ImageConverter(ch_img).convertToGray8()
+                # save
+                IJ.saveAsTiff(ch_img, path.join(Out_dir, ch_tit))
+                # close and flush
+                ch_img.close()
+                ch_img.flush()
+                print "Image " + str(counter) + " of " + str(len(chf_fpaths)) + " processed"
+                counter += 1
+
+        IJ.log('Mouse ' + MouseID + ' processed')
+
+    print "DONE, find your results in " + Out_dir
