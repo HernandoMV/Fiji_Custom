@@ -62,6 +62,7 @@ def get_enhance_bounds(chf_fpaths, low_theshold, high_threshold):
         # open the image
         print "Getting pixels in Image " + image_path
         print str(counter) + " / " + str(len(chf_fpaths))
+        counter += 1
         imp_orig = Opener().openImage(image_path)
         # get the pixel values
         image_pix = list(imp_orig.getProcessor().getPixels())

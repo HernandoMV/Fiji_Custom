@@ -22,6 +22,7 @@ from os import listdir, path, mkdir, remove
 from ij.plugin.frame import SyncWindows, ThresholdAdjuster
 from ij.process import ImageProcessor
 from ij.gui import WaitForUserDialog, Roi, TextRoi, PolygonRoi, Overlay
+import sys
 
 
 class gui(JFrame):
@@ -35,7 +36,7 @@ class gui(JFrame):
 
         # create panel (what is inside the GUI)
         self.panel = self.getContentPane()
-        self.panel.setLayout(GridLayout(11, 1))
+        self.panel.setLayout(GridLayout(10, 1))
         self.setTitle('Subdividing ROIs')
 
         # define buttons here:
@@ -54,8 +55,8 @@ class gui(JFrame):
         # summsaveButton = JButton("Save Summary", actionPerformed = self.save_summary)
 
         self.textfield1 = JTextField('25')
-        self.textfield2 = JTextField('CONT01_control_slide-3')
-        self.textfield3 = JTextField('L-DMS')
+        self.textfield2 = JTextField('KAA328_PH3_Slide-1')
+        self.textfield3 = JTextField('R-Tail')
 
         # add buttons here
         self.panel.add(Label("Name your image"))
@@ -94,16 +95,16 @@ class gui(JFrame):
         seriesCount = reader.getSeriesCount()
         # slide scanner makes a piramid of 7 for every ROI you draw
         # resolution is not updated in the metadata so it needs to be calculated manually
-        number_of_images = seriesCount / 7
+        number_of_images, self.num_of_piramids = get_data_structure(seriesCount)
         print "Number of images is " + str(number_of_images)
         # set names of subimages in the list, waiting to compare to current outputs
         self.possible_slices = [self.file_core_name + "_slice-" + str(n) for n in range(number_of_images)]
 
-        self.binFactor = get_binning_factor(reader)
+        self.binFactor = get_binning_factor(reader, self.num_of_piramids)
         print "Binning factor is " + str(self.binFactor)
 
         # create output directory if it doesn't exist
-        self.output_path = path.join(path.dirname(self.input_path), "ROIs")
+        self.output_path = path.join(path.dirname(path.dirname(self.input_path)), "ROIs")
         if path.isdir(self.output_path):
             print "Output path was already created"
         else:
@@ -114,6 +115,8 @@ class gui(JFrame):
         self.update_list()
 
     def update_list(self):
+        # remove stuff from lists:
+        # TODO
         # populate the list
         for f in set(self.possible_slices):
             self.subimage_number.addElement(f)
@@ -131,11 +134,13 @@ class gui(JFrame):
             if not path.exists(self.input_path):
                 print "I don't find the file, which is weird as I just found it before"
             else:
-                # get the low res
-                series_num = self.sl_num * 7 + 6
+                # get the Xth resolution binned, depending on the number
+                # of resolutions
+                series_num = self.sl_num * self.num_of_piramids + (self.num_of_piramids  - 1)
                 self.low_res_image = open_czi_series(self.input_path, series_num)  # read the image
                 # play with that one, and do the real processing in the background
                 # select the DAPI channel and adjust the intensity
+
                 self.lr_dapi = extractChannel(self.low_res_image, 1, 1)
                 ContrastEnhancer().stretchHistogram(self.lr_dapi, 0.35)
                 self.lr_dapi.setTitle(self.name)
@@ -147,19 +152,6 @@ class gui(JFrame):
                 self.low_res_image.close()
                 self.low_res_image.flush()
 
-                #self.low_res_image.show()
-                #self.low_res_image.setDisplayMode(IJ.COMPOSITE)
-                #color_order = ['Blue', 'Green', 'Red']
-                #for c in range(self.low_res_image.getNChannels()):
-                #	self.low_res_image.setC(c+1)
-                #	IJ.run(color_order[c])
-                #	ContrastEnhancer().stretchHistogram(self.low_res_image, 0.35)
-                #self.low_res_image.updateAndDraw()
-                #comp = CompositeImage(self.low_res_image, CompositeImage.COLOR)
-                #comp.show()
-                #IJ.Stack.setDisplayMode("composite")
-                #IJ.run("RGB")
-                #self.low_res_image.show() #show image
 
     def cubify_ROI(self, e):
         self.manualROI_name = self.name + "_manualROI-" + self.textfield3.text
@@ -194,28 +186,47 @@ class gui(JFrame):
 
         # open the second highest resolution one to see if it is in focus
         # calculate limits of manual ROI on that image
-        min_x = int(min([x[0] for x in self.corners_cleaned]) * (self.binFactor / 2))
-        min_y = int(min([x[1] for x in self.corners_cleaned]) * (self.binFactor / 2))
-        max_x = int(max([x[0] for x in self.corners_cleaned]) * (self.binFactor / 2))
-        max_y = int(max([x[1] for x in self.corners_cleaned]) * (self.binFactor / 2))
-        series_num = self.sl_num * 7 + 1
+        # TODO change this!!!
+        #bf_corr = self.binFactor / 2
+        bf_corr = self.binFactor
+        min_x = int(min([x[0] for x in self.corners_cleaned]) * bf_corr)
+        min_y = int(min([x[1] for x in self.corners_cleaned]) * bf_corr)
+        max_x = int((max([x[0] for x in self.corners_cleaned]) + self.L) * bf_corr)
+        max_y = int((max([x[1] for x in self.corners_cleaned]) + self.L) * bf_corr)
+        series_num = self.sl_num * self.num_of_piramids + 0 #TODO: change this!!
         self.med_res_image = open_czi_series(
             self.input_path, series_num,
             rect=[min_x, min_y, max_x - min_x, max_y - min_y])  # read the image
         # play with that one, and do the real processing in the background
         # select the DAPI channel and adjust the intensity
-        self.mr_dapi = extractChannel(self.med_res_image, 1, 1)
+        """ self.mr_dapi = extractChannel(self.med_res_image, 1, 1)
         ContrastEnhancer().stretchHistogram(self.mr_dapi, 0.35)
         self.mr_dapi.setTitle(self.name + '--med_res')
         self.mr_dapi.show()
         # clean
         self.med_res_image.close()
         self.med_res_image.flush()
+        """
+        self.med_res_image.show()
+        self.med_res_image.setDisplayMode(IJ.COMPOSITE)
+        color_order = ['Grays', 'Green', 'Red', 'Cyan']
+        for c in range(self.med_res_image.getNChannels()):
+            self.med_res_image.setC(c + 1)
+            IJ.run(color_order[c])
+            ContrastEnhancer().stretchHistogram(self.med_res_image, 0.35)
+            self.med_res_image.updateAndDraw()
+        comp = CompositeImage(self.low_res_image, CompositeImage.COLOR)
+        comp.show()
+        IJ.Stack.setDisplayMode("composite")
+        # IJ.run("RGB")
+        # clean
+        self.med_res_image.close()
+        self.med_res_image.flush()
 
     def save_ROIs(self, e):
         # clean the med res image
-        self.mr_dapi.close()
-        self.mr_dapi.flush()
+        #self.mr_dapi.close()
+        #self.mr_dapi.flush()
         print 'Saving ROIs'
         # add a counter for the ROI name
         roiID = 1
@@ -227,8 +238,8 @@ class gui(JFrame):
             yt = int(y * self.binFactor)
             Lt = int(self.L * self.binFactor)
             # open the high resolution image on that roi
-            series_num = self.sl_num * 7
-            hr_imp = open_czi_series(self.input_path, series_num, rect=[xt,yt,Lt,Lt])
+            series_num = self.sl_num * self.num_of_piramids
+            hr_imp = open_czi_series(self.input_path, series_num, rect=[xt, yt, Lt, Lt])
             # hr_imp.show()
             # name of this ROI
             Roi_name = self.manualROI_name + "_squareROI-" + str(roiID)
@@ -259,7 +270,9 @@ class gui(JFrame):
         IJ.selectWindow(self.name)
         IJ.run("Flatten")
         imp = IJ.getImage()
-        IJ.saveAsTiff(imp, path.join(self.summary_output_path, self.manualROI_name + "_summaryImage"))
+        IJ.saveAsTiff(imp, path.join(
+            self.summary_output_path,
+            self.manualROI_name + "_summaryImage"))
         print "summary image saved"
         IJ.run("Close All")
 
@@ -278,7 +291,7 @@ class gui(JFrame):
 
 # other functions
 def open_czi_series(file_name, series_number, rect=False):
-    # TODO: implement the selection of only one channel if possible
+    # TODO: implement the selection of only one channel (not necessary)
     # see https://downloads.openmicroscopy.org/bio-formats/5.5.1/api/loci/plugins/in/ImporterOptions.html
     options = ImporterOptions()
     options.setId(file_name)
@@ -293,14 +306,31 @@ def open_czi_series(file_name, series_number, rect=False):
         options.setCrop(True)
         options.setCropRegion(series_number, Region(rect[0], rect[1], rect[2], rect[3]))
     imps = BF.openImagePlus(options)
+    
     return imps[0]
 
 
-def get_binning_factor(r):
+def get_data_structure(seriesCount):
+    num_of_real_images = seriesCount - 2  # TODO: make this with a checkbox in the gui
+    if num_of_real_images % 6 == 0:
+        num_of_piramids = 6
+    if num_of_real_images % 7 == 0:
+        num_of_piramids = 7
+    if num_of_real_images % 8 == 0:
+        num_of_piramids = 8
+    #else:
+        #sys.exit('Number of images is weird, check manually and change the code')
+    number_of_images = int(num_of_real_images / num_of_piramids)
+
+    return [number_of_images, num_of_piramids]
+
+
+def get_binning_factor(r, num_of_piramids):
     r.setSeries(0)
     high_res = r.getSizeX()
-    r.setSeries(6)
+    r.setSeries(num_of_piramids - 1)
     low_res = r.getSizeX()
+    
     return high_res / low_res
 
 
@@ -313,7 +343,7 @@ def get_core_names(file_names, core_name):
             mr_index_array = [i for i, s in enumerate(name_pieces) if 'manualROI-' in s]
             # check that there is only one occurrence
             if len(mr_index_array) == 1:
-                out_names.append('_'.join(name_pieces[0:(mr_index_array[0]+1)]))
+                out_names.append('_'.join(name_pieces[0:(mr_index_array[0] + 1)]))
             else:
                 raise NameError('Your file name should not contain slice-')
     return set(out_names)
@@ -395,5 +425,4 @@ def write_roi_numbers(ov, corners, L):
 # myimage.show()
 
 
-if(__name__ == '__builtin__'):
-    gui()
+gui()

@@ -28,7 +28,7 @@ getDimensions(width, height, channels, slices, frames);
 //create a dialog
 //Specify arrays
 LUT_array = newArray("Grays", "Cyan", "Red", "Green", "Fire"); //Include new LUTs here
-Channel_names = newArray("DAPI", "D2", "mCherry", "D1", "Ch5", "Ch6", "Ch7"); //Defaults names to write
+Channel_names = newArray("DAPI", "SPNs", "D2", "PH3", "Ch5", "Ch6", "Ch7"); //Defaults names to write
 Order_array = newArray(channels); //for the order of the channels
 for (i=1; i<=channels; i++){ //loop for default values
 	Order_array[i-1] = i;
@@ -52,12 +52,14 @@ Dialog.show();
 ListOfLuts = newArray(channels);
 ListOfNames = newArray(channels);
 for (i=0; i<ListOfLuts.length; i++){
-	ListOfLuts[i] = Dialog.getChoice();
 	ListOfNames[i] = Dialog.getString();
+	ListOfLuts[i] = Dialog.getChoice();
 }
 //LUTs for Single Channels
 SingleChannelsLUTCheck = Dialog.getCheckbox(); //if same LUTs as in Composite
 SingleChannelsLUT = Dialog.getChoice(); //If different LUT for the individual channels
+ListOfSingleChannelsLUT = ListOfLuts;
+/*
 ListOfSingleChannelsLUT = newArray(channels);
 for (i=0; i<ListOfSingleChannelsLUT.length; i++){
 	if (SingleChannelsLUTCheck==true){
@@ -67,6 +69,7 @@ for (i=0; i<ListOfSingleChannelsLUT.length; i++){
 		ListOfSingleChannelsLUT[i] = SingleChannelsLUT;
 	}
 }
+*/
 //order array conversion
 Order_array = split(Dialog.getString(),',');
 
@@ -80,6 +83,7 @@ for(i=1; i<=channels; i++){
 	//Change LUT
 	setSlice(i);
 	run(ListOfLuts[i-1]);
+	print(ListOfLuts[i-1]);
 	//write names
 	WriteName (getTitle, ListOfNames[i-1], round(getWidth*0.05), yposition, i);
 	yposition = yposition - round(getHeight*0.05);
@@ -102,15 +106,21 @@ run("Split Channels");
 //for each channel, change the LUT and write the name
 for (i=1; i<=channels; i++){
 	selectWindow("C"+i+"-"+imtit);
+	rename("remove this");
 	run(ListOfSingleChannelsLUT[i-1]);
+	print("C"+i+"-"+imtit);
+	print(ListOfSingleChannelsLUT[i-1]);
 	//Write name
 	WriteName (getTitle, ListOfNames[i-1], round(getWidth*0.05), round(getHeight*0.95), 1);
-	run("RGB Color");
+	run("Flatten"); //flatten if there is overlay
+	rename("C"+i+"-"+imtit);
+	selectWindow("remove this");
+	run("Close");	
 }
 //make montage: keep combining the images in the order specified
 Montage_image = "C"+Order_array[0]+"-"+imtit;
 //DO THE FOR LOOP WITH THE ORDER ARRAY INSTEAD
-for(i=1; i<=channels; i++){
+for(i=1; i<Order_array.length; i++){
 	run("Combine...", "stack1=" + Montage_image + " stack2=C"+Order_array[i]+"-"+imtit);
 	rename("Combined");
 	Montage_image = "Combined";
@@ -135,7 +145,7 @@ function WriteName (imname, string, posx, posy, slicenum){
 	//This function writes, in 'imname', in slice 'slicenum', a 'string' in 'posx' and 'posy'
 	//It selects a proportional text size.
 	selectWindow(imname);
-	TextSize = round(getHeight/25);
+	TextSize = round(getHeight/15);
 	setFont("SansSerif" , TextSize, "bold");
 	setJustification("left");
 	setColor(255, 255, 255);
