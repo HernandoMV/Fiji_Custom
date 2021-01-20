@@ -148,6 +148,8 @@ class gui(JFrame):
                 # reposition image
                 self.lr_dapi.getWindow().setLocation(420, 10)
                 self.lr_dapi.updateAndDraw()
+                # duplicate for saving it for registration
+                self.lr_dapi_reg = self.lr_dapi.duplicate()
                 # clean
                 self.low_res_image.close()
                 self.low_res_image.flush()
@@ -193,7 +195,7 @@ class gui(JFrame):
         min_y = int(min([x[1] for x in self.corners_cleaned]) * bf_corr)
         max_x = int((max([x[0] for x in self.corners_cleaned]) + self.L) * bf_corr)
         max_y = int((max([x[1] for x in self.corners_cleaned]) + self.L) * bf_corr)
-        series_num = self.sl_num * self.num_of_piramids + 0 #TODO: change this!!
+        series_num = self.sl_num * self.num_of_piramids + 0  # TODO: change this!!
         self.med_res_image = open_czi_series(
             self.input_path, series_num,
             rect=[min_x, min_y, max_x - min_x, max_y - min_y])  # read the image
@@ -227,9 +229,25 @@ class gui(JFrame):
         # clean the med res image
         #self.mr_dapi.close()
         #self.mr_dapi.flush()
+        # save the low resolution image for registration
+        self.save_lowres_image()
+
         print 'Saving ROIs'
         # add a counter for the ROI name
         roiID = 1
+
+        # create a file to save the ROI coordinates
+        # create output directory if it doesn't exist
+        self.roi_output_path = path.join(self.output_path, "000_manualROIs_info")
+        if path.isdir(self.roi_output_path):
+            print "Output path for ROIs information was already created"
+        else:
+            mkdir(self.roi_output_path)
+            print "Output path for ROIs created"
+        roi_points_file_path = path.join(self.roi_output_path, self.manualROI_name + "_roi_positions.txt")
+        with open(roi_points_file_path, "w") as roi_points_file:
+            roi_points_file.write("roiID, x_pos, y_pos, bin_factor")
+
         # for each roi
         for [x, y] in self.corners_cleaned:
             print '   -> processing square ROI number ' + str(roiID)
@@ -237,6 +255,10 @@ class gui(JFrame):
             xt = int(x * self.binFactor)
             yt = int(y * self.binFactor)
             Lt = int(self.L * self.binFactor)
+            # save the corner coordinates of the ROI in a file
+            with open(roi_points_file_path, "a") as roi_points_file:
+                roi_points_file.write("\n{}, {}, {}, {}".format(roiID, xt, yt, self.binFactor))
+
             # open the high resolution image on that roi
             series_num = self.sl_num * self.num_of_piramids
             hr_imp = open_czi_series(self.input_path, series_num, rect=[xt, yt, Lt, Lt])
@@ -277,17 +299,30 @@ class gui(JFrame):
         IJ.run("Close All")
 
         # save manual ROI
-        # create output directory if it doesn't exist
-        self.roi_output_path = path.join(self.output_path, "000_manualROIs_info")
-        if path.isdir(self.roi_output_path):
-            print "Output path for ROIs information was already created"
-        else:
-            mkdir(self.roi_output_path)
-            print "Output path for ROIs created"
         RoiEncoder.save(self.roi, path.join(self.roi_output_path, self.manualROI_name))
         print "roi information saved, closing images and finishing"
         IJ.run("Close All")
 
+    def save_lowres_image(self):
+        self.forreg_output_path = path.join(self.output_path, "000_Low_resolution_slices")
+
+        if path.isdir(self.forreg_output_path):
+            print "Output path for low resolution slices was already created"
+        else:
+            mkdir(self.forreg_output_path)
+            print "Output path for low resolution slices created"       
+
+        # check that this slice has not been saved before
+        reg_slice_name = path.join(self.forreg_output_path, self.name)
+        if path.isfile(reg_slice_name):
+            print "Low resolution slice already exists"
+        else:
+            # save otherwise
+            #self.lr_dapi_reg.getProcessor().resetMinAndMax()
+            IJ.saveAsTiff(self.lr_dapi_reg, reg_slice_name)
+            self.lr_dapi_reg.close()
+            self.lr_dapi_reg.flush()
+            print "Low resolution slice saved"
 
 # other functions
 def open_czi_series(file_name, series_number, rect=False):
@@ -306,7 +341,7 @@ def open_czi_series(file_name, series_number, rect=False):
         options.setCrop(True)
         options.setCropRegion(series_number, Region(rect[0], rect[1], rect[2], rect[3]))
     imps = BF.openImagePlus(options)
-    
+
     return imps[0]
 
 
@@ -419,6 +454,7 @@ def write_roi_numbers(ov, corners, L):
         ov.add(text)
         roiID += 1
     return ov
+
 
 # get an image
 # myimage = open_czi_series(path, 6, rect=[1,5,400,400])
