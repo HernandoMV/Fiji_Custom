@@ -138,6 +138,9 @@ class gui(JFrame):
                 # of resolutions
                 series_num = self.sl_num * self.num_of_piramids + (self.num_of_piramids  - 1)
                 self.low_res_image = open_czi_series(self.input_path, series_num)  # read the image
+                # save the resolution
+                self.low_res_xy_size = self.low_res_image.getCalibration().pixelWidth
+                self.low_res_units = self.low_res_image.getCalibration().getXUnit()
                 # play with that one, and do the real processing in the background
                 # select the DAPI channel and adjust the intensity
 
@@ -246,7 +249,7 @@ class gui(JFrame):
             print "Output path for ROIs created"
         roi_points_file_path = path.join(self.roi_output_path, self.manualROI_name + "_roi_positions.txt")
         with open(roi_points_file_path, "w") as roi_points_file:
-            roi_points_file.write("roiID, x_pos, y_pos, bin_factor")
+            roi_points_file.write("roiID, high_res_x_pos, high_res_y_pos, bin_factor, low_res_pixel_size, units")
 
         # for each roi
         for [x, y] in self.corners_cleaned:
@@ -257,7 +260,8 @@ class gui(JFrame):
             Lt = int(self.L * self.binFactor)
             # save the corner coordinates of the ROI in a file
             with open(roi_points_file_path, "a") as roi_points_file:
-                roi_points_file.write("\n{}, {}, {}, {}".format(roiID, xt, yt, self.binFactor))
+                roi_points_file.write("\n{}, {}, {}, {}, {}, {}".format(roiID, xt, yt, self.binFactor,
+                                                                        self.low_res_xy_size, self.low_res_units))
 
             # open the high resolution image on that roi
             series_num = self.sl_num * self.num_of_piramids
@@ -391,7 +395,9 @@ def extractChannel(imp, nChannel, nFrame):
     for i in range(1, imp.getNSlices() + 1):
         index = imp.getStackIndex(nChannel, i, nFrame)
         ch.addSlice(str(i), stack.getProcessor(index))
-    return ImagePlus("Channel " + str(nChannel), ch)
+    stack_to_return = ImagePlus("Channel " + str(nChannel), ch)
+    stack_to_return.copyScale(imp)
+    return stack_to_return
 
 
 def get_corners(roi, L):
