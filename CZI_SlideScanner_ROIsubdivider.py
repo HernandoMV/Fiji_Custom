@@ -20,7 +20,7 @@ from ij import ImagePlus, IJ, WindowManager, ImageStack, CompositeImage
 from ij.plugin import WindowOrganizer, ZProjector, ImageCalculator, Macro_Runner, FolderOpener, Duplicator, ContrastEnhancer
 from os import listdir, path, mkdir, remove
 from ij.plugin.frame import SyncWindows, ThresholdAdjuster
-from ij.process import ImageProcessor
+from ij.process import ImageProcessor, ImageConverter
 from ij.gui import WaitForUserDialog, Roi, TextRoi, PolygonRoi, Overlay
 import sys
 
@@ -93,7 +93,7 @@ class gui(JFrame):
         reader = ImageReader()
         reader.setId(self.input_path)
         seriesCount = reader.getSeriesCount()
-        # slide scanner makes a piramid of 7 for every ROI you draw
+        # slide scanner makes a piramid of X for every ROI you draw
         # resolution is not updated in the metadata so it needs to be calculated manually
         number_of_images, self.num_of_piramids = get_data_structure(seriesCount)
         print "Number of images is " + str(number_of_images)
@@ -322,7 +322,26 @@ class gui(JFrame):
             print "Low resolution slice already exists"
         else:
             # save otherwise
-            #self.lr_dapi_reg.getProcessor().resetMinAndMax()
+            self.lr_dapi_reg.getProcessor().resetRoi()
+            # reset min and max automatically
+            # convert to 8-bit (which also applies the contrast)
+            ImageConverter(self.lr_dapi_reg).convertToGray8()
+            # convert to 25um/px so that it can be aligned to ARA
+            lowres_resolution = self.binFactor * self.res_xy_size
+            print(lowres_resolution)
+            rescale_factor = lowres_resolution / 25
+            new_width = int(rescale_factor * self.lr_dapi_reg.getWidth())
+            # self.lr_dapi_reg.getProcessor().scale(rescale_factor, rescale_factor)
+            ip = self.lr_dapi_reg.getProcessor().resize(new_width)
+            self.lr_dapi_reg.setProcessor(ip)
+            # Add the information to the metadata
+            self.lr_dapi_reg.getCalibration().pixelWidth = 25
+            self.lr_dapi_reg.getCalibration().pixelHeight = 25
+            self.lr_dapi_reg.getCalibration().pixelDepth = 1
+            self.lr_dapi_reg.getCalibration().setXUnit("micrometer")
+            self.lr_dapi_reg.getCalibration().setYUnit("micrometer")
+            self.lr_dapi_reg.getCalibration().setZUnit("micrometer")
+            # self.lr_dapi_reg.getProcessor().resetRoi()
             IJ.saveAsTiff(self.lr_dapi_reg, reg_slice_name)
             self.lr_dapi_reg.close()
             self.lr_dapi_reg.flush()
@@ -369,7 +388,7 @@ def get_binning_factor(r, num_of_piramids):
     high_res = r.getSizeX()
     r.setSeries(num_of_piramids - 1)
     low_res = r.getSizeX()
-    
+
     return high_res / low_res
 
 
