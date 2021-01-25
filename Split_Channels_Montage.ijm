@@ -27,8 +27,8 @@ getDimensions(width, height, channels, slices, frames);
 
 //create a dialog
 //Specify arrays
-LUT_array = newArray("Grays", "Cyan", "Red", "Green", "Fire"); //Include new LUTs here
-Channel_names = newArray("DAPI", "D2", "mCherry", "D1", "Ch5", "Ch6", "Ch7"); //Defaults names to write
+LUT_array = newArray("Grays", "Green", "Red", "Cyan", "Fire"); //Include new LUTs here
+Channel_names = newArray("DAPI", "Cre", "D2", "D1", "Ch5", "Ch6", "Ch7"); //Defaults names to write
 Order_array = newArray(channels); //for the order of the channels
 for (i=1; i<=channels; i++){ //loop for default values
 	Order_array[i-1] = i;
@@ -115,6 +115,9 @@ for(i=1; i<=channels; i++){
 	rename("Combined");
 	Montage_image = "Combined";
 }
+//combine
+run("Z Project...", "projection=[Max Intensity]");
+
 //MAKE A BETTER NAME
 rename(imtit + "Split_Channels_Montage");
 
