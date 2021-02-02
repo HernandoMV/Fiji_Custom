@@ -25,7 +25,12 @@ from ij.plugin.frame import SyncWindows, ThresholdAdjuster
 from ij.process import ImageProcessor, ImageConverter
 from ij.gui import WaitForUserDialog, Roi, TextRoi, PolygonRoi, Overlay
 import sys
-
+sys.path.append("/C:/Users/herny/Documents/GitHub/Fiji_Custom/")
+from functions.czi_structure import get_data_structure, get_binning_factor, open_czi_series
+from functions.image_manipulation import extractChannel
+from functions.text_manipulation import get_core_names
+from functions.roi_and_ov_manipulation import get_corners, overlay_corners, overlay_roi, \
+    clean_corners, write_roi_numbers
 
 class gui(JFrame):
     def __init__(self):  # constructor
@@ -60,7 +65,7 @@ class gui(JFrame):
         self.textfield2 = JTextField(self.default_naming)
         self.textfield3 = JTextField('R-Tail')
         self.textfield4 = JTextField('2, 4, 22.619')
-        self.textfield5 = JTextField('2')
+        self.textfield5 = JTextField('4')
 
         # add buttons here
         self.panel.add(Label("Name your image, or use filename"))
@@ -219,13 +224,13 @@ class gui(JFrame):
                 IJ.run(color_order[c])
                 ContrastEnhancer().stretchHistogram(self.med_res_image, 0.35)
                 self.med_res_image.updateAndDraw()
-            comp = CompositeImage(self.low_res_image, CompositeImage.COLOR)
-            comp.show()
-            IJ.Stack.setDisplayMode("composite")
+            # rename
+            self.med_res_image.setTitle(self.manualROI_name)
+            # I don't know what comp is....
+            #comp = CompositeImage(self.low_res_image, CompositeImage.COLOR)
+            #comp.show()
+            #IJ.Stack.setDisplayMode("composite")
             # IJ.run("RGB")
-            # clean
-            self.med_res_image.close()
-            self.med_res_image.flush()
 
     def save_ROIs(self, e):
         # save the low resolution image for registration
@@ -310,6 +315,10 @@ class gui(JFrame):
 
     def save_registration_image(self):
         # TODO: it might be needed to remove the background. Test registration first
+        reg_text_info = self.textfield4.text.split(',')
+        reg_pir_num = int(reg_text_info[0])
+        reg_channel = int(reg_text_info[1])
+        self.reg_final_res = float(reg_text_info[2])
 
         self.forreg_output_path = path.join(self.output_path, "000_Slices_for_ARA_registration")
 
@@ -321,14 +330,10 @@ class gui(JFrame):
 
         # check that this slice has not been saved before
         reg_slice_name = path.join(self.forreg_output_path, self.name)
-        if path.isfile(reg_slice_name):
+        if path.isfile(reg_slice_name + '.tif'):
             print("Registration slice already exists")
         else:
             # save otherwise
-            reg_text_info = self.textfield4.text.split(',')
-            reg_pir_num = int(reg_text_info[0])
-            reg_channel = int(reg_text_info[1])
-            self.reg_final_res = float(reg_text_info[2])
             print("Saving for registration channel {} at {} um/px".format(reg_channel, self.reg_final_res))
             # get the Xth resolution image and Xth channel for saving it for registration
             series_num = self.sl_num * self.num_of_piramids + (self.num_of_piramids - reg_pir_num)
@@ -362,140 +367,6 @@ class gui(JFrame):
             self.regist_image.flush()
             print("Slice for registration saved")
 
-# other functions
-def open_czi_series(file_name, series_number, rect=False):
-    # TODO: implement the selection of only one channel (not necessary)
-    # see https://downloads.openmicroscopy.org/bio-formats/5.5.1/api/loci/plugins/in/ImporterOptions.html
-    options = ImporterOptions()
-    options.setId(file_name)
-    options.setColorMode(ImporterOptions.COLOR_MODE_GRAYSCALE)
-    # select image to open
-    options.setOpenAllSeries(False)
-    options.setAutoscale(False)
-    options.setSeriesOn(series_number, True)
-    # default is not to crop
-    options.setCrop(False)
-    if rect:  # crop if asked for
-        options.setCrop(True)
-        options.setCropRegion(series_number, Region(rect[0], rect[1], rect[2], rect[3]))
-    imps = BF.openImagePlus(options)
 
-    return imps[0]
-
-
-def get_data_structure(seriesCount):
-    num_of_real_images = seriesCount - 2  # TODO: make this with a checkbox in the gui
-    if num_of_real_images % 6 == 0:
-        num_of_piramids = 6
-    if num_of_real_images % 7 == 0:
-        num_of_piramids = 7
-    if num_of_real_images % 8 == 0:
-        num_of_piramids = 8
-    # else:
-        # sys.exit('Number of images is weird, check manually and change the code')
-    number_of_images = int(num_of_real_images / num_of_piramids)
-
-    return [number_of_images, num_of_piramids]
-
-
-def get_binning_factor(r, num_of_piramids):
-    r.setSeries(0)
-    high_res = r.getSizeX()
-    r.setSeries(num_of_piramids - 1)
-    low_res = r.getSizeX()
-
-    return high_res / low_res
-
-
-def get_core_names(file_names, core_name):
-    out_names = []
-    for name in file_names:
-        if core_name in name:
-            # parse for the Slices
-            name_pieces = name.split('_')
-            mr_index_array = [i for i, s in enumerate(name_pieces) if 'manualROI-' in s]
-            # check that there is only one occurrence
-            if len(mr_index_array) == 1:
-                out_names.append('_'.join(name_pieces[0:(mr_index_array[0] + 1)]))
-            else:
-                raise NameError('Your file name should not contain slice-')
-    return set(out_names)
-
-
-def extractChannel(imp, nChannel, nFrame):
-    """ Extract a stack for a specific color channel and time frame """
-    stack = imp.getImageStack()
-    ch = ImageStack(imp.width, imp.height)
-    for i in range(1, imp.getNSlices() + 1):
-        index = imp.getStackIndex(nChannel, i, nFrame)
-        ch.addSlice(str(i), stack.getProcessor(index))
-    stack_to_return = ImagePlus("Channel " + str(nChannel), ch)
-    stack_to_return.copyScale(imp)
-    return stack_to_return
-
-
-def get_corners(roi, L):
-    # get the points inside roi
-    poly = roi.getContainedFloatPoints()
-    xs = poly.xpoints
-    ys = poly.ypoints
-    # create an empty set to hold the corners
-    corners = set()
-    for x, y in zip(xs, ys):
-        # add the modulo of the size to set
-        # need to be tuple, lists can't be adde to a set
-        xc = x - x % L
-        yc = y - y % L
-        corners.add((xc, yc))
-
-    return corners
-
-
-def overlay_corners(corners, L):
-    ov = Overlay()
-    for [x, y] in corners:
-        rect = Roi(x, y, L, L)
-        rect.setStrokeColor(Color.RED)
-        rect.setLineWidth(2)
-        ov.add(rect)
-    return ov
-
-
-def overlay_roi(roi, ov):
-    roi.setStrokeColor(Color.GREEN)
-    roi.setLineWidth(4)
-    ov.add(roi)
-    return ov
-
-
-def clean_corners(corners, roi, L):
-    # get the points inside roi
-    poly = roi.getContainedPoints()
-    xs = [int(p.getX()) for p in poly]
-    ys = [int(p.getY()) for p in poly]
-    points = zip(xs, ys)
-    corners_cleaned = set()
-    for c in corners:
-        if c in points:  # if the corner is inside
-            if (c[0] + L, c[1] + L) in points:  # if the opposite corner is inside
-                if (c[0] + L, c[1]) in points:
-                    if (c[0], c[1] + L) in points:
-                        corners_cleaned.add(c)
-    # sort rois first by x and then by y coordinates
-    return sorted(sorted(corners_cleaned, key=lambda item: item[1]))
-
-
-def write_roi_numbers(ov, corners, L):
-    fontsize = int(L / 1.5)
-    roiID = 1
-    for [x, y] in corners:
-        text = TextRoi(x, y, L, L, str(roiID), Font("Arial", Font.BOLD, fontsize))
-        text.setJustification(2)
-        text.setColor(Color.RED)
-        ov.add(text)
-        roiID += 1
-    return ov
-
-
-if __name__ == '__main__':
+if __name__ in ['__builtin__', '__main__']:
     gui()
