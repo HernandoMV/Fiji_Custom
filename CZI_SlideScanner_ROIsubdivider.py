@@ -121,7 +121,10 @@ class gui(JFrame):
         print("Binning factor is " + str(self.binFactor))
 
         # create output directory if it doesn't exist
-        self.output_path = path.join(path.dirname(path.dirname(self.input_path)), "ROIs")
+        # get the animal id
+        animal_id = self.file_core_name.split('_')[0]
+        self.output_path = path.join(path.dirname(path.dirname(self.input_path)),
+                                     "Processed_data", animal_id, "ROIs")
         if path.isdir(self.output_path):
             print("Output path was already created")
         else:

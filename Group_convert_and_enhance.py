@@ -98,7 +98,7 @@ if __name__ in ['__builtin__', '__main__']:
     if not os.path.exists(Out_dir):
         os.makedirs(Out_dir)
     else:
-        print "Output directory exists already, data might be overwritten"
+        print("Output directory exists already, data might be overwritten")
 
     # get tif files
     ListTif = getTifImages(In_dir)
@@ -116,7 +116,7 @@ if __name__ in ['__builtin__', '__main__']:
         MouseIDFiles = getMouseFiles(ListTif, MouseID)
         # calculate the number of channels
         number_of_channels_in_mouse = getNumberOfChannels(MouseIDFiles)
-        print str(MouseID) + " contains " + str(number_of_channels_in_mouse) + " distinct channels"
+        print(str(MouseID) + " contains " + str(number_of_channels_in_mouse) + " distinct channels")
         # run the function for each of the channels
         for channel in range(1, (number_of_channels_in_mouse + 1)):
             channel_files = getChannelFiles(MouseIDFiles, channel)
@@ -139,9 +139,9 @@ if __name__ in ['__builtin__', '__main__']:
                 # close and flush
                 ch_img.close()
                 ch_img.flush()
-                print "Image " + str(counter) + " of " + str(len(chf_fpaths)) + " processed"
+                print("Image " + str(counter) + " of " + str(len(chf_fpaths)) + " processed")
                 counter += 1
 
         IJ.log('Mouse ' + MouseID + ' processed')
 
-    print "DONE, find your results in " + Out_dir
+    print("DONE, find your results in " + Out_dir)
