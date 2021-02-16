@@ -20,13 +20,14 @@ from ij.io import OpenDialog, Opener, DirectoryChooser, FileSaver, RoiEncoder
 from ij import ImagePlus, IJ, WindowManager, ImageStack, CompositeImage
 from ij.plugin import WindowOrganizer, ZProjector, ImageCalculator, Macro_Runner, FolderOpener, \
     Duplicator, ContrastEnhancer
-from os import listdir, path, mkdir, remove
+from os import listdir, path, mkdir, remove, makedirs
 from ij.plugin.frame import SyncWindows, ThresholdAdjuster
 from ij.process import ImageProcessor, ImageConverter
 from ij.gui import WaitForUserDialog, Roi, TextRoi, PolygonRoi, Overlay
 import sys
 sys.path.append("/C:/Users/herny/Documents/GitHub/Fiji_Custom/")
-from functions.czi_structure import get_data_structure, get_binning_factor, open_czi_series
+from functions.czi_structure import get_data_structure, get_binning_factor, open_czi_series, \
+    get_maxres_indexes
 from functions.image_manipulation import extractChannel
 from functions.text_manipulation import get_core_names
 from functions.roi_and_ov_manipulation import get_corners, overlay_corners, overlay_roi, \
@@ -108,17 +109,21 @@ class gui(JFrame):
 
         reader = ImageReader()
         reader.setId(self.input_path)
-        seriesCount = reader.getSeriesCount()
+        metadata_list = reader.getCoreMetadataList()
         # slide scanner makes a piramid of X for every ROI you draw
         # resolution is not updated in the metadata so it needs to be calculated manually
-        number_of_images, self.num_of_piramids = get_data_structure(seriesCount)
+        number_of_images, self.num_of_piramids_list = get_data_structure(metadata_list)
         print("Number of images is " + str(number_of_images))
+        # get the indexes of the maximum resolution images
+        self.max_res_indexes = get_maxres_indexes(self.num_of_piramids_list)
+        print("Number of pyramids are " + str(self.num_of_piramids_list))
         # set names of subimages in the list, waiting to compare to current outputs
         self.possible_slices = [self.file_core_name + "_slice-" + str(n)
                                 for n in range(number_of_images)]
 
-        self.binFactor = get_binning_factor(reader, self.num_of_piramids)
-        print("Binning factor is " + str(self.binFactor))
+        self.binFactor_list = get_binning_factor(self.max_res_indexes, self.num_of_piramids_list,
+                                                 metadata_list)
+        print("Binning factors are " + str(self.binFactor_list))
 
         # create output directory if it doesn't exist
         # get the animal id
@@ -128,7 +133,7 @@ class gui(JFrame):
         if path.isdir(self.output_path):
             print("Output path was already created")
         else:
-            mkdir(self.output_path)
+            makedirs(self.output_path)
             print("Output path created")
 
         # update_lists depending on whether something has been processed already
@@ -154,9 +159,13 @@ class gui(JFrame):
             if not path.exists(self.input_path):
                 print("I don't find the file, which is weird as I just found it before")
             else:
-                # get the Xth resolution binned, depending on the number
+                # get the number of piramids for that image, the index of highres and the binning
+                self.num_of_piramids = self.num_of_piramids_list[self.sl_num]
+                self.high_res_index = self.max_res_indexes[self.sl_num]
+                self.binFactor = self.binFactor_list[self.sl_num]
+                # get the lowest resolution binned, depending on the number
                 # of resolutions. The order is higher to lower.
-                series_num = self.sl_num * self.num_of_piramids + (self.num_of_piramids - 1)
+                series_num = self.high_res_index + self.num_of_piramids - 1
                 self.low_res_image = open_czi_series(self.input_path, series_num)  # read the image
                 # save the resolution (every image has the high-resolution information)
                 self.res_xy_size = self.low_res_image.getCalibration().pixelWidth
@@ -214,7 +223,7 @@ class gui(JFrame):
             min_y = int(min([x[1] for x in self.corners_cleaned]) * bf_corr)
             max_x = int((max([x[0] for x in self.corners_cleaned]) + self.L) * bf_corr)
             max_y = int((max([x[1] for x in self.corners_cleaned]) + self.L) * bf_corr)
-            series_num = self.sl_num * self.num_of_piramids + pir_for_focus - 1
+            series_num = self.high_res_index + pir_for_focus - 1
             self.med_res_image = open_czi_series(
                 self.input_path, series_num,
                 rect=[min_x, min_y, max_x - min_x, max_y - min_y])  # read the image
@@ -273,7 +282,7 @@ class gui(JFrame):
                                              self.res_xy_size, self.res_units))
 
             # open the high resolution image on that roi
-            series_num = self.sl_num * self.num_of_piramids
+            series_num = self.high_res_index
             hr_imp = open_czi_series(self.input_path, series_num, rect=[xt, yt, Lt, Lt])
             # hr_imp.show()
             # name of this ROI
@@ -317,7 +326,6 @@ class gui(JFrame):
         IJ.run("Close All")
 
     def save_registration_image(self):
-        # TODO: it might be needed to remove the background. Test registration first
         reg_text_info = self.textfield4.text.split(',')
         reg_pir_num = int(reg_text_info[0])
         reg_channel = int(reg_text_info[1])
@@ -339,7 +347,7 @@ class gui(JFrame):
             # save otherwise
             print("Saving for registration channel {} at {} um/px".format(reg_channel, self.reg_final_res))
             # get the Xth resolution image and Xth channel for saving it for registration
-            series_num = self.sl_num * self.num_of_piramids + (self.num_of_piramids - reg_pir_num)
+            series_num = self.high_res_index + self.num_of_piramids - reg_pir_num
             self.raw_reg_image = open_czi_series(self.input_path, series_num)  # read the image
             self.regist_image = extractChannel(self.raw_reg_image, reg_channel, 1)
             ContrastEnhancer().stretchHistogram(self.regist_image, 0.35)

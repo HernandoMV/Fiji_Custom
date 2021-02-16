@@ -6,7 +6,7 @@
 
 macro "display_points_in_ARA" {
 // Default values
-Radius = 2;
+Radius = 1;
 ARA = "/C:/Users/herny/Desktop/SWC/Data/Anatomy/ARA_25_micron_mhd/template.mhd";
 FileDir = File.openDialog("choose the csv file");
 resolution = 1; //info is in pixels
@@ -59,6 +59,9 @@ str2merch = "c1=Original c4=template.raw create";
 run("Merge Channels...", str2merch);
 
 setBatchMode(false);
+
+run("Z Project...", "start=230 stop=260 projection=[Sum Slices]");
+run("Fire");
 
 }
 
