@@ -41,6 +41,7 @@ def get_data_structure(global_metadata):
 def get_binning_factor(max_indexes_list, num_of_piramids_list, global_metadata):
     '''
     for each image in the list get the maximum binarization value
+    get also the binning factor (how much each pyramid step is binned)
     '''
     # use the sizes of the images to calculate the binning
     Xsizes = []
@@ -48,14 +49,18 @@ def get_binning_factor(max_indexes_list, num_of_piramids_list, global_metadata):
         Xsizes.append(global_metadata[i].sizeX)
 
     bin_list = []
+    step_list = []
     for i, maxind in enumerate(max_indexes_list):
         high_res = Xsizes[maxind]
         lowind = maxind + (num_of_piramids_list[i] - 1)
         low_res = Xsizes[lowind]
+        # get the step (not a very smart way)
+        step = Xsizes[maxind] / Xsizes[maxind + 1]
 
         bin_list.append(high_res / low_res)
+        step_list.append(step)
 
-    return bin_list
+    return bin_list, step_list
 
 
 def get_maxres_indexes(piramid_list):

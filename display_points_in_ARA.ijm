@@ -25,13 +25,18 @@ open(ARA)
 selectWindow("template.raw");
 getDimensions(Width, Height, channels, Slices, frames);
 
-newImage("Original", "16-bit black", Width, Height, Slices);
+newImage("undetermined", "16-bit black", Width, Height, Slices);
+newImage("d1", "16-bit black", Width, Height, Slices);
+newImage("d2", "16-bit black", Width, Height, Slices);
 
-selectImage("Original");
-for (i = 0; i < lines.length; i++) {
+for (i = 1; i < lines.length; i++) {
 	//print(lines[i]);
 	showProgress(i/lines.length);
 	items=split(lines[i], cellseparator);
+	cell_label=items[3];
+	//print(cell_label);
+	selectImage(cell_label);
+	
 	x0 = floor(parseFloat(items[0])) * resolution; 
 	y0 = floor(parseFloat(items[1])) * resolution; 
 	z0 = floor(parseFloat(items[2])) * resolution;
@@ -54,7 +59,7 @@ run("Set Scale...", "distance=0 known=0 pixel=1 unit=pixel");
 run("Grays");
 //run("Divide...", "value=2.5 stack");
 
-str2merch = "c1=Original c4=template.raw create";
+str2merch = "c1=undetermined c2=d1 c3=d2 c4=template.raw create";
 
 run("Merge Channels...", str2merch);
 

@@ -65,8 +65,8 @@ class gui(JFrame):
         self.textfield1 = JTextField('18')
         self.textfield2 = JTextField(self.default_naming)
         self.textfield3 = JTextField('R-Tail')
-        self.textfield4 = JTextField('2, 4, 22.619')
-        self.textfield5 = JTextField('4')
+        self.textfield4 = JTextField('6, 4, 22.619')
+        self.textfield5 = JTextField('0')
 
         # add buttons here
         self.panel.add(Label("Name your image, or use filename"))
@@ -78,7 +78,7 @@ class gui(JFrame):
         self.panel.add(Label("give a name of your hand-drawn ROI"))
         self.panel.add(self.textfield3)
         self.panel.add(Label("For ARA: piram, ch, res"))
-        # piramid number (low to high), channel number, final resolution (um/px)"))
+        # piramid number (high to low), channel number, final resolution (um/px)"))
         self.panel.add(self.textfield4)
         self.panel.add(Label("Piramid to check (0:none; 1:highest)"))
         self.panel.add(self.textfield5)
@@ -121,9 +121,10 @@ class gui(JFrame):
         self.possible_slices = [self.file_core_name + "_slice-" + str(n)
                                 for n in range(number_of_images)]
 
-        self.binFactor_list = get_binning_factor(self.max_res_indexes, self.num_of_piramids_list,
-                                                 metadata_list)
+        self.binFactor_list, self.binStep_list = get_binning_factor(self.max_res_indexes,
+                                                self.num_of_piramids_list, metadata_list)
         print("Binning factors are " + str(self.binFactor_list))
+        print("Binning steps are " + str(self.binStep_list))
 
         # create output directory if it doesn't exist
         # get the animal id
@@ -163,6 +164,7 @@ class gui(JFrame):
                 self.num_of_piramids = self.num_of_piramids_list[self.sl_num]
                 self.high_res_index = self.max_res_indexes[self.sl_num]
                 self.binFactor = self.binFactor_list[self.sl_num]
+                self.binStep = self.binStep_list[self.sl_num]
                 # get the lowest resolution binned, depending on the number
                 # of resolutions. The order is higher to lower.
                 series_num = self.high_res_index + self.num_of_piramids - 1
@@ -197,8 +199,11 @@ class gui(JFrame):
 
         print(self.manualROI_name)
 
-        # set square roi size
-        self.L = int(self.textfield1.text)
+        # set square roi size in the low resolution level
+        gui_adjust = 128  # for historic reasons
+        hr_L = int(self.textfield1.text) * gui_adjust
+        # convert back to low resolution
+        self.L = hr_L / self.binFactor
         # get info
         tit = self.lr_dapi.getTitle()
         self.roi = self.lr_dapi.getRoi()
@@ -218,7 +223,7 @@ class gui(JFrame):
         # open the Xth highest resolution one to see if it is in focus
         if int(self.textfield5.text) != 0:
             pir_for_focus = int(self.textfield5.text)
-            bf_corr = self.binFactor / (2 ** (pir_for_focus - 1))
+            bf_corr = self.binFactor / (self.binStep ** (pir_for_focus - 1))
             min_x = int(min([x[0] for x in self.corners_cleaned]) * bf_corr)
             min_y = int(min([x[1] for x in self.corners_cleaned]) * bf_corr)
             max_x = int((max([x[0] for x in self.corners_cleaned]) + self.L) * bf_corr)
@@ -347,7 +352,7 @@ class gui(JFrame):
             # save otherwise
             print("Saving for registration channel {} at {} um/px".format(reg_channel, self.reg_final_res))
             # get the Xth resolution image and Xth channel for saving it for registration
-            series_num = self.high_res_index + self.num_of_piramids - reg_pir_num
+            series_num = self.high_res_index + reg_pir_num
             self.raw_reg_image = open_czi_series(self.input_path, series_num)  # read the image
             self.regist_image = extractChannel(self.raw_reg_image, reg_channel, 1)
             ContrastEnhancer().stretchHistogram(self.regist_image, 0.35)
@@ -358,7 +363,7 @@ class gui(JFrame):
             # convert to 8-bit (which also applies the contrast)
             # ImageConverter(self.regist_image).convertToGray8()
             # convert to Xum/px so that it can be aligned to ARA
-            reg_im_bin_factor = self.binFactor / (2 ** (reg_pir_num - 1))
+            reg_im_bin_factor = self.binStep ** reg_pir_num
             regres_resolution = reg_im_bin_factor * self.res_xy_size
             rescale_factor = regres_resolution / self.reg_final_res
             new_width = int(rescale_factor * self.regist_image.getWidth())
