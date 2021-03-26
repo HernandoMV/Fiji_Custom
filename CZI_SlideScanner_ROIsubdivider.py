@@ -25,7 +25,7 @@ from ij.plugin.frame import SyncWindows, ThresholdAdjuster
 from ij.process import ImageProcessor, ImageConverter
 from ij.gui import WaitForUserDialog, Roi, TextRoi, PolygonRoi, Overlay
 import sys
-sys.path.append("/C:/Users/herny/Documents/GitHub/Fiji_Custom/")
+sys.path.append(path.abspath(path.dirname(__file__)))
 from functions.czi_structure import get_data_structure, get_binning_factor, open_czi_series, \
     get_maxres_indexes
 from functions.image_manipulation import extractChannel
