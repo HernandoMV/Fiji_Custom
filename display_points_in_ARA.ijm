@@ -26,6 +26,7 @@ selectWindow("template.raw");
 getDimensions(Width, Height, channels, Slices, frames);
 
 newImage("undetermined", "16-bit black", Width, Height, Slices);
+newImage("spn", "16-bit black", Width, Height, Slices);
 newImage("d1", "16-bit black", Width, Height, Slices);
 newImage("d2", "16-bit black", Width, Height, Slices);
 
@@ -59,7 +60,7 @@ run("Set Scale...", "distance=0 known=0 pixel=1 unit=pixel");
 run("Grays");
 //run("Divide...", "value=2.5 stack");
 
-str2merch = "c1=undetermined c2=d1 c3=d2 c4=template.raw create";
+str2merch = "c1=spn c2=d1 c3=d2 c4=template.raw c5=undetermined create";
 
 run("Merge Channels...", str2merch);
 
