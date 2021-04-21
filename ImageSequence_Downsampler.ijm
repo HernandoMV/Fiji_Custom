@@ -25,7 +25,7 @@ for (i = 0; i < files.length; i++) {
 		xy_scale = 1 / how_much_to_resize;
 		new_w = floor(width / how_much_to_resize);
 		new_h = floor(height / how_much_to_resize);
-		print(new_h);
+		//print(new_h);
 		run("Scale...", "x=" + xy_scale + " y=" + xy_scale + 
 			" width=" + new_w + " height=" + new_h +
 			" interpolation=Bilinear average create title=downsized");
