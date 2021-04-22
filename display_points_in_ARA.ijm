@@ -6,7 +6,7 @@
 
 macro "display_points_in_ARA" {
 // Default values
-Radius = 1;
+Radius = 2;
 ARA = "/C:/Users/herny/Desktop/SWC/Data/Anatomy/ARA_25_micron_mhd/template.mhd";
 FileDir = File.openDialog("choose the csv file");
 resolution = 1; //info is in pixels
