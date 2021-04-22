@@ -9,15 +9,16 @@
 from ij import IJ  #, ImagePlus, ImageStack
 from loci.formats import ImageReader
 from ij.plugin import ContrastEnhancer
-from os import mkdir, path
+from os import path, makedirs
 import sys
-sys.path.append("/C:/Users/herny/Documents/GitHub/Fiji_Custom/")
-from functions.czi_structure import get_data_structure, get_binning_factor, open_czi_series
+sys.path.append(path.abspath(path.dirname(__file__)))
+from functions.czi_structure import get_data_structure, get_binning_factor, open_czi_series, \
+    get_maxres_indexes
 from functions.image_manipulation import extractChannel
 
-piramid_to_open = 4
-channel_to_save = 4
-final_resolution = 10
+piramid_to_open = 1
+channel_to_save = 3
+final_resolution = 5
 
 # Main
 if __name__ in ['__builtin__', '__main__']:
@@ -25,18 +26,24 @@ if __name__ in ['__builtin__', '__main__']:
     input_path = IJ.getFilePath("Choose a .czi file")
     reader = ImageReader()
     reader.setId(input_path)
-    seriesCount = reader.getSeriesCount()
+    metadata_list = reader.getCoreMetadataList()
     # slide scanner makes a piramid of X for every ROI you draw
     # resolution is not updated in the metadata so it needs to be calculated manually
-    number_of_images, num_of_piramids = get_data_structure(seriesCount)
-    print("Number of images is " + str(number_of_images))
+    number_of_images, num_of_piramids_list = get_data_structure(metadata_list)
+    IJ.log("Number of images is " + str(number_of_images))
     # set names of subimages in the list, waiting to compare to current outputs
     file_core_name = path.basename(input_path).split('.czi')[0]
+    # get the indexes of the maximum resolution images
+    max_res_indexes = get_maxres_indexes(num_of_piramids_list)
+    IJ.log("Number of pyramids are " + str(num_of_piramids_list))
+    # set names of subimages in the list, waiting to compare to current outputs
     possible_slices = [file_core_name + "_slice-" + str(n)
                        for n in range(number_of_images)]
 
-    binFactor = get_binning_factor(reader, num_of_piramids)
-    print("Binning factor is " + str(binFactor))
+    binFactor_list, binStep_list = get_binning_factor(max_res_indexes,
+                                                      num_of_piramids_list, metadata_list)
+    IJ.log("Binning factors are " + str(binFactor_list))
+    IJ.log("Binning steps are " + str(binStep_list))
 
     # create output directory if it doesn't exist
     output_res_path = '000_Slices_for_ARA_registration_' + str(final_resolution) + '_umpx'
@@ -46,7 +53,7 @@ if __name__ in ['__builtin__', '__main__']:
     if path.isdir(output_path):
         print("Output path was already created")
     else:
-        mkdir(output_path)
+        makedirs(output_path)
         print("Output path created")
 
     # for each slice name:
@@ -54,10 +61,15 @@ if __name__ in ['__builtin__', '__main__']:
         # parse the slice number
         sl_num = int(sl_name.split('-')[-1])
         print("Processing image " + sl_name)
+        # get info
+        num_of_piramids = num_of_piramids_list[sl_num]
+        binFactor = binFactor_list[sl_num]
+        high_res_index = max_res_indexes[sl_num]
+        binStep = binStep_list[sl_num]
         # open the image
         # get the Xth resolution binned, depending on the number
         # of resolutions. The order is higher to lower.
-        series_num = sl_num * num_of_piramids + piramid_to_open
+        series_num = high_res_index + piramid_to_open
         raw_image = open_czi_series(input_path, series_num)
         # save the resolution (every image has the high-resolution information)
         res_xy_size = raw_image.getCalibration().pixelWidth
@@ -65,7 +77,7 @@ if __name__ in ['__builtin__', '__main__']:
         # select the requested channel and adjust the intensity
         regist_image = extractChannel(raw_image, channel_to_save, 1)
         # TODO: test if contrast enhancement and background sustraction are needed for registration
-        #ContrastEnhancer().stretchHistogram(ch_image, 0.35)
+        ContrastEnhancer().stretchHistogram(regist_image, 0.35)
         # IMPLEMENT BACKGROUND SUSTRACTION HERE
         regist_image.setTitle(sl_name)
         #ch_image.show()
@@ -73,7 +85,7 @@ if __name__ in ['__builtin__', '__main__']:
         raw_image.close()
         raw_image.flush()
         # convert to Xum/px so that it can be aligned to ARA
-        reg_im_bin_factor = binFactor / (2 ** (piramid_to_open - 1))
+        reg_im_bin_factor = binStep ** piramid_to_open
         regres_resolution = reg_im_bin_factor * res_xy_size
         rescale_factor = regres_resolution / final_resolution
         new_width = int(rescale_factor * regist_image.getWidth())

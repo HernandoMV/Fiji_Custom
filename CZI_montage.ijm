@@ -8,11 +8,11 @@ run("Close All");
 //setBatchMode(true);
 
 //Parameters:
-angleToRot = 90;
+angleToRot = 0;
 positionOfName = 2; //1,2 correspond to TopLeft, TopMiddle (only TopMiddle working at the moment).
 TextSize = 60;
 //FileExtension = "_Overview.czi";
-FileExtension = ".czi";
+FileExtension = ".tif";
 
 dir = getDirectory("Select Directory containing your data");
 //dir = "C:/Users/herny/Desktop/SWC/Data/CorticoStriatal_Projections/MouseLinesCharacterization/700325_AxioZoom_20180709/";
