@@ -41,11 +41,11 @@ class gui(JFrame):
 
         # inintialize values
         self.Canvas = None
-        self.default_naming = 'MouseID_ExperimentalGroup_slide-X'
+        self.default_naming = 'MouseID_ExperimentalGroup_Slide-X'
 
         # create panel (what is inside the GUI)
         self.panel = self.getContentPane()
-        self.panel.setLayout(GridLayout(8, 2))
+        self.panel.setLayout(GridLayout(10, 2))
         self.setTitle('Subdividing ROIs')
 
         # define buttons here:
@@ -68,11 +68,17 @@ class gui(JFrame):
         self.textfield4 = JTextField('6, 4, 22.619')
         self.textfield5 = JTextField('0')
 
+        # load ARA regions buttons
+        loadARARegionButton = JButton("Load ARA region", actionPerformed=self.load_ARA_region)
+        self.textfield_ARA_region = JTextField('Caudoputamen')
+
         # add buttons here
         self.panel.add(Label("Name your image, or use filename"))
         self.panel.add(self.textfield2)
         self.panel.add(selectInputFolderButton)
         self.panel.add(listScroller1)
+        self.panel.add(loadARARegionButton)
+        self.panel.add(self.textfield_ARA_region)
         self.panel.add(Label("Adjust the size of the squared ROIs"))
         self.panel.add(self.textfield1)
         self.panel.add(Label("give a name of your hand-drawn ROI"))
@@ -186,6 +192,9 @@ class gui(JFrame):
                 self.low_res_image.close()
                 self.low_res_image.flush()
 
+    def load_ARA_region(self, e):
+        pass
+    
     def cubify_ROI(self, e):
         self.manualROI_name = self.name + "_manualROI-" + self.textfield3.text
 
@@ -336,7 +345,8 @@ class gui(JFrame):
         reg_channel = int(reg_text_info[1])
         self.reg_final_res = float(reg_text_info[2])
 
-        self.forreg_output_path = path.join(self.output_path, "000_Slices_for_ARA_registration")
+        output_res_path = 'Registration/Slices_for_ARA_registration_channel-' + str(reg_channel) + '_' + str(self.reg_final_res) + '-umpx'
+        self.forreg_output_path = path.join(path.dirname(self.output_path), output_res_path)
 
         if path.isdir(self.forreg_output_path):
             print("Output path for low resolution slices was already created")

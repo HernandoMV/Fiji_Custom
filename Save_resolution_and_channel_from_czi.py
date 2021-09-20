@@ -16,8 +16,8 @@ from functions.czi_structure import get_data_structure, get_binning_factor, open
     get_maxres_indexes
 from functions.image_manipulation import extractChannel
 
-piramid_to_open = 3
-channel_to_save = 3
+piramid_to_open = 2
+channel_to_save = 4
 final_resolution = 5
 
 # Main
@@ -46,10 +46,10 @@ if __name__ in ['__builtin__', '__main__']:
     IJ.log("Binning steps are " + str(binStep_list))
 
     # create output directory if it doesn't exist
-    output_res_path = '000_Slices_for_ARA_registration_' + str(final_resolution) + '_umpx'
+    output_res_path = 'Registration/Slices_for_ARA_registration_channel-' + str(channel_to_save) + '_' + str(final_resolution) + '-umpx'
     animal_id = file_core_name.split('_')[0]
     output_path = path.join(path.dirname(path.dirname(input_path)),
-                            "Processed_data", animal_id, 'ROIs', output_res_path)
+                            "Processed_data", animal_id, output_res_path)
     if path.isdir(output_path):
         print("Output path was already created")
     else:
@@ -96,9 +96,9 @@ if __name__ in ['__builtin__', '__main__']:
         regist_image.getCalibration().pixelWidth = final_resolution
         regist_image.getCalibration().pixelHeight = final_resolution
         regist_image.getCalibration().pixelDepth = 1
-        regist_image.getCalibration().setXUnit("micrometer")
-        regist_image.getCalibration().setYUnit("micrometer")
-        regist_image.getCalibration().setZUnit("micrometer")
+        regist_image.getCalibration().setXUnit("microns")
+        regist_image.getCalibration().setYUnit("microns")
+        regist_image.getCalibration().setZUnit("microns")
         # Save image
         reg_slice_name = path.join(output_path, sl_name)
         IJ.saveAsTiff(regist_image, reg_slice_name)
