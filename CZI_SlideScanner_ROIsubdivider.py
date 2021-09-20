@@ -21,7 +21,7 @@ from ij import ImagePlus, IJ, WindowManager, ImageStack, CompositeImage
 from ij.plugin import WindowOrganizer, ZProjector, ImageCalculator, Macro_Runner, FolderOpener, \
     Duplicator, ContrastEnhancer
 from os import listdir, path, mkdir, remove, makedirs
-from ij.plugin.frame import SyncWindows, ThresholdAdjuster
+from ij.plugin.frame import SyncWindows, ThresholdAdjuster, RoiManager
 from ij.process import ImageProcessor, ImageConverter
 from ij.gui import WaitForUserDialog, Roi, TextRoi, PolygonRoi, Overlay
 import sys
@@ -29,7 +29,8 @@ sys.path.append(path.abspath(path.dirname(__file__)))
 from functions.czi_structure import get_data_structure, get_binning_factor, open_czi_series, \
     get_maxres_indexes
 from functions.image_manipulation import extractChannel
-from functions.text_manipulation import get_core_names
+from functions.text_manipulation import get_core_names, get_registered_slices_folder, \
+    get_registered_regions_path
 from functions.roi_and_ov_manipulation import get_corners, overlay_corners, overlay_roi, \
     clean_corners, write_roi_numbers
 
@@ -41,7 +42,7 @@ class gui(JFrame):
 
         # inintialize values
         self.Canvas = None
-        self.default_naming = 'MouseID_ExperimentalGroup_Slide-X'
+        self.default_naming = 'MouseID_ExperimentalGroup_slide-X'
 
         # create panel (what is inside the GUI)
         self.panel = self.getContentPane()
@@ -62,10 +63,11 @@ class gui(JFrame):
         cubifyROIButton = JButton("Cubify ROI", actionPerformed=self.cubify_ROI)
         saveButton = JButton("Save ROIs", actionPerformed=self.save_ROIs)
 
-        self.textfield1 = JTextField('18')
+        self.textfield1 = JTextField('6')
         self.textfield2 = JTextField(self.default_naming)
         self.textfield3 = JTextField('R-Tail')
-        self.textfield4 = JTextField('6, 4, 22.619')
+        # self.textfield4 = JTextField('6, 4, 22.619')
+        self.textfield4 = JTextField('')
         self.textfield5 = JTextField('0')
 
         # load ARA regions buttons
@@ -169,11 +171,13 @@ class gui(JFrame):
                 # get the number of piramids for that image, the index of highres and the binning
                 self.num_of_piramids = self.num_of_piramids_list[self.sl_num]
                 self.high_res_index = self.max_res_indexes[self.sl_num]
-                self.binFactor = self.binFactor_list[self.sl_num]
-                self.binStep = self.binStep_list[self.sl_num]
-                # get the lowest resolution binned, depending on the number
+                # get Xth lowest resolution binned, depending on the number
                 # of resolutions. The order is higher to lower.
-                series_num = self.high_res_index + self.num_of_piramids - 1
+                # This number is hard-coded for now
+                LOW_RES_TO_OPEN = 2
+                series_num = self.high_res_index + self.num_of_piramids - LOW_RES_TO_OPEN
+                self.binStep = self.binStep_list[self.sl_num]
+                self.binFactor = self.binFactor_list[self.sl_num] / (self.binStep ** (LOW_RES_TO_OPEN - 1))
                 self.low_res_image = open_czi_series(self.input_path, series_num)  # read the image
                 # save the resolution (every image has the high-resolution information)
                 self.res_xy_size = self.low_res_image.getCalibration().pixelWidth
@@ -193,10 +197,51 @@ class gui(JFrame):
                 self.low_res_image.flush()
 
     def load_ARA_region(self, e):
-        pass
+        # look for the folder and avoid conflicts
+        registration_folder = path.join(path.dirname(self.output_path), 'Registration/')
+        regions_folder, registration_resolution = get_registered_slices_folder(registration_folder)
+        #print('Folder: {}; resoltution: {}'.format(regions_folder, registration_resolution))
+        # check the resolution to adjust roi later
+        res_of_lr_dapi = self.res_xy_size * self.binFactor
+        regions_transform_factor = registration_resolution / res_of_lr_dapi
+        # check that there is a zip file with the rois for this slice
+        regions_path = get_registered_regions_path(regions_folder, self.name)
+
+        # move this to a function: TODO
+        # load the roi manager
+        rm_regions = RoiManager()
+        # load the regions file
+        rm_regions.runCommand("Open", regions_path)
+        # get a list of the names
+        regions_number = rm_regions.getCount()
+        region_names = []
+        for i in range(regions_number):
+            region_names.append(rm_regions.getName(i))
+        # check that there is a roi with that name
+        region_index = region_names.index(self.textfield_ARA_region.text)
+        self.reg_roi = rm_regions.getRoi(region_index)
+        # transform to the proper resolution
+        roi_polygon = self.reg_roi.getPolygon()
+        xs = [round(i * regions_transform_factor) for i in roi_polygon.xpoints]
+        ys = [round(i * regions_transform_factor) for i in roi_polygon.ypoints]
+        self.roi = PolygonRoi(xs, ys, len(xs), Roi.POLYGON)
+        # close roi manager
+        rm_regions.close()
+        # show it
+        #self.lr_dapi.getProcessor().setRoi(self.roi)
+        self.ov = Overlay()
+        self.ov = overlay_roi(self.roi, self.ov)
+        self.lr_dapi.setOverlay(self.ov)
+        self.lr_dapi.updateAndDraw()
+        #rm_regions.selectAndMakeVisible(self.lr_dapi, region_index)
+
     
     def cubify_ROI(self, e):
-        self.manualROI_name = self.name + "_manualROI-" + self.textfield3.text
+        # check if this was selected from ARA regions and change naming
+        if not hasattr(self, 'roi'):
+            self.manualROI_name = self.name + "_manualROI-" + self.textfield3.text
+        else:
+            self.manualROI_name = self.name + "_manualROI-" + self.textfield_ARA_region.text
 
         # warn the user if that ROI exists already in the processed data
         self.processed_files = listdir(self.output_path)
@@ -215,11 +260,13 @@ class gui(JFrame):
         self.L = hr_L / self.binFactor
         # get info
         tit = self.lr_dapi.getTitle()
-        self.roi = self.lr_dapi.getRoi()
+        if not hasattr(self, 'roi'):
+            self.roi = self.lr_dapi.getRoi()
 
         # get corners
         corners = get_corners(self.roi, self.L)
-        self.corners_cleaned = clean_corners(corners, self.roi, self.L)
+        # self.corners_cleaned = clean_corners(corners, self.roi, self.L)
+        self.corners_cleaned = corners
         # get the overlay
         self.ov = overlay_corners(self.corners_cleaned, self.L)
         self.ov = overlay_roi(self.roi, self.ov)
@@ -340,13 +387,17 @@ class gui(JFrame):
         IJ.run("Close All")
 
     def save_registration_image(self):
+        # make this conditional to the text
+        if self.textfield4.text == '':
+            self.reg_final_res = 0
+            return
         reg_text_info = self.textfield4.text.split(',')
         reg_pir_num = int(reg_text_info[0])
         reg_channel = int(reg_text_info[1])
         self.reg_final_res = float(reg_text_info[2])
 
-        output_res_path = 'Registration/Slices_for_ARA_registration_channel-' + str(reg_channel) + '_' + str(self.reg_final_res) + '-umpx'
-        self.forreg_output_path = path.join(path.dirname(self.output_path), output_res_path)
+        output_res_path = 'Slices_for_ARA_registration_channel-' + str(reg_channel) + '_' + str(self.reg_final_res) + '-umpx'
+        self.forreg_output_path = path.join(path.dirname(self.output_path), 'Registration', output_res_path)
 
         if path.isdir(self.forreg_output_path):
             print("Output path for low resolution slices was already created")

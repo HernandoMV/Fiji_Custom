@@ -21,7 +21,8 @@ def get_corners(roi, L):
         yc = y - y % L
         corners.add((xc, yc))
 
-    return corners
+    # sort rois first by x and then by y coordinates
+    return sorted(sorted(corners, key=lambda item: item[1]))
 
 
 def overlay_corners(corners, L):
