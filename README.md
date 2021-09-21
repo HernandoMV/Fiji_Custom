@@ -12,3 +12,6 @@ After this is done for every image in the dataset, use Group_convert_and_enhace.
 2. Register using ABBA and save transformation field and atlas annotations: https://biop.github.io/ijp-imagetoatlas/registration.html#slices-registration
   - Flip the axis as the ABBA atlas is the other way around (check this once registration is made)
   - Save inside the same folder as the original images
+3. Use 'CZI_SlideScanner_ROIsubdivider to generate the ROIs, loading the region of interest (e.g. Caudoputamen)
+  - TODO: think about removing the part of the image that is not inside the ROI
+  - Make this automatic and without the need to have a GUI
