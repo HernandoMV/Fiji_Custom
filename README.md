@@ -13,7 +13,6 @@ After this is done for every image in the dataset, use Group_convert_and_enhace.
   - Flip the axis as the ABBA atlas is the other way around (check this once registration is made)
   - Register once with affine, using channel 1 of the atlas (autofluorescence)
   - Register with spline with 5 landmarks, and correct registration
-  - Register with spline with 15 landmarks
   - Save inside the same folder as the original images
 3. Use 'CZI_SlideScanner_ROIsubdivider to generate the ROIs, loading the region of interest (e.g. Caudoputamen)
   - TODO: think about removing the part of the image that is not inside the ROI
