@@ -10,3 +10,5 @@ After this is done for every image in the dataset, use Group_convert_and_enhace.
 # Workflow for registration and analysis of PH3 data
 1. Use 'Save_resolution_and_channel_from_czi.py' in Fiji to export slices. (Using channel 4 and 5um/px atm)
 2. Register using ABBA and save transformation field and atlas annotations: https://biop.github.io/ijp-imagetoatlas/registration.html#slices-registration
+  - Flip the axis as the ABBA atlas is the other way around (check this once registration is made)
+  - Save inside the same folder as the original images
