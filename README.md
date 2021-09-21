@@ -8,9 +8,12 @@ It opens the low resolution image of the selected set of piramidal images, gets 
 After this is done for every image in the dataset, use Group_convert_and_enhace.py, which transforms the images into 8-bit and normalizes the intensities by channel and by animal
 
 # Workflow for registration and analysis of PH3 data
-1. Use 'Save_resolution_and_channel_from_czi.py' in Fiji to export slices. (Using channel 4 and 5um/px atm)
+1. Use 'Save_resolution_and_channel_from_czi.py' in Fiji to export slices. (Using channel 4 and 10um/px atm)
 2. Register using ABBA and save transformation field and atlas annotations: https://biop.github.io/ijp-imagetoatlas/registration.html#slices-registration
   - Flip the axis as the ABBA atlas is the other way around (check this once registration is made)
+  - Register once with affine, using channel 1 of the atlas (autofluorescence)
+  - Register with spline with 5 landmarks, and correct registration
+  - Register with spline with 15 landmarks
   - Save inside the same folder as the original images
 3. Use 'CZI_SlideScanner_ROIsubdivider to generate the ROIs, loading the region of interest (e.g. Caudoputamen)
   - TODO: think about removing the part of the image that is not inside the ROI

@@ -16,9 +16,9 @@ from functions.czi_structure import get_data_structure, get_binning_factor, open
     get_maxres_indexes
 from functions.image_manipulation import extractChannel
 
-piramid_to_open = 2
+piramid_to_open = 3
 channel_to_save = 4
-final_resolution = 5
+final_resolution = 10
 
 # Main
 if __name__ in ['__builtin__', '__main__']:
