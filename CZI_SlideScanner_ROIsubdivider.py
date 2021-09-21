@@ -9,21 +9,16 @@
 # with the 40x objective
 
 
-from loci.common import Region
 from loci.plugins.in import ImporterOptions
-from loci.plugins import BF
 from loci.formats import ImageReader
-from javax.swing import JFrame, JButton, JPanel, JTextField, JSlider, JCheckBox, JList, JLabel, \
-    BorderFactory, JScrollPane, SwingConstants, DefaultListModel
-from java.awt import GridLayout, Dimension, GraphicsEnvironment, BorderLayout, Label, Color, Font
-from ij.io import OpenDialog, Opener, DirectoryChooser, FileSaver, RoiEncoder
-from ij import ImagePlus, IJ, WindowManager, ImageStack, CompositeImage
-from ij.plugin import WindowOrganizer, ZProjector, ImageCalculator, Macro_Runner, FolderOpener, \
-    Duplicator, ContrastEnhancer
-from os import listdir, path, mkdir, remove, makedirs
-from ij.plugin.frame import SyncWindows, ThresholdAdjuster, RoiManager
-from ij.process import ImageProcessor, ImageConverter
-from ij.gui import WaitForUserDialog, Roi, TextRoi, PolygonRoi, Overlay
+from javax.swing import JFrame, JButton, JTextField, JCheckBox, JList, \
+    JScrollPane, DefaultListModel
+from java.awt import GridLayout, Dimension, Label
+from ij.io import RoiEncoder
+from ij import IJ
+from ij.plugin import ContrastEnhancer
+from os import listdir, path, mkdir, makedirs
+from ij.gui import Overlay
 import sys
 sys.path.append(path.abspath(path.dirname(__file__)))
 from functions.czi_structure import get_data_structure, get_binning_factor, open_czi_series, \
@@ -32,7 +27,7 @@ from functions.image_manipulation import extractChannel
 from functions.text_manipulation import get_core_names, get_registered_slices_folder, \
     get_registered_regions_path
 from functions.roi_and_ov_manipulation import get_corners, overlay_corners, overlay_roi, \
-    clean_corners, write_roi_numbers
+    clean_corners, write_roi_numbers, get_region_from_file
 
 class gui(JFrame):
     def __init__(self):  # constructor
@@ -200,33 +195,18 @@ class gui(JFrame):
         # look for the folder and avoid conflicts
         registration_folder = path.join(path.dirname(self.output_path), 'Registration/')
         regions_folder, registration_resolution = get_registered_slices_folder(registration_folder)
-        #print('Folder: {}; resoltution: {}'.format(regions_folder, registration_resolution))
         # check the resolution to adjust roi later
         res_of_lr_dapi = self.res_xy_size * self.binFactor
         regions_transform_factor = registration_resolution / res_of_lr_dapi
         # check that there is a zip file with the rois for this slice
         regions_path = get_registered_regions_path(regions_folder, self.name)
 
-        # move this to a function: TODO
-        # load the roi manager
-        rm_regions = RoiManager()
-        # load the regions file
-        rm_regions.runCommand("Open", regions_path)
-        # get a list of the names
-        regions_number = rm_regions.getCount()
-        region_names = []
-        for i in range(regions_number):
-            region_names.append(rm_regions.getName(i))
-        # check that there is a roi with that name
-        region_index = region_names.index(self.textfield_ARA_region.text)
-        self.reg_roi = rm_regions.getRoi(region_index)
-        # transform to the proper resolution
-        roi_polygon = self.reg_roi.getPolygon()
-        xs = [round(i * regions_transform_factor) for i in roi_polygon.xpoints]
-        ys = [round(i * regions_transform_factor) for i in roi_polygon.ypoints]
-        self.roi = PolygonRoi(xs, ys, len(xs), Roi.POLYGON)
-        # close roi manager
-        rm_regions.close()
+        # get the roi from the region
+        self.roi = get_region_from_file(input_file=regions_path,
+                                        region_name=self.textfield_ARA_region.text,
+                                        image=self.lr_dapi,
+                                        scale_factor=regions_transform_factor)
+
         # show it
         #self.lr_dapi.getProcessor().setRoi(self.roi)
         self.ov = Overlay()
