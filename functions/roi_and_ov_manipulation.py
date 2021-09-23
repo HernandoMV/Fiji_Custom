@@ -110,6 +110,8 @@ def get_region_from_file(input_file, region_name, image, scale_factor):
     fp = imp.getProcessor()
     fp.invert()
     fp.erode()
+    fp.erode()
+    fp.dilate()
     fp.dilate()
     imp.show()
     # get new roi from it

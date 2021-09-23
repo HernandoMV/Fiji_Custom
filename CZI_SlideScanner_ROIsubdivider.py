@@ -51,7 +51,7 @@ class gui(JFrame):
         mylist.setLayoutOrientation(JList.VERTICAL)
         mylist.setVisibleRowCount(1)
         listScroller1 = JScrollPane(mylist)
-        listScroller1.setPreferredSize(Dimension(200, 90))
+        listScroller1.setPreferredSize(Dimension(300, 90))
 
         quitButton = JButton("Quit", actionPerformed=self.quit)
         selectInputFolderButton = JButton("Select Input", actionPerformed=self.select_input)
@@ -69,6 +69,10 @@ class gui(JFrame):
         loadARARegionButton = JButton("Load ARA region", actionPerformed=self.load_ARA_region)
         self.textfield_ARA_region = JTextField('Caudoputamen')
 
+        # create a button to remove ROIs
+        removeROIsButton = JButton("Select ROI numbers to remove", actionPerformed=self.remove_corners)
+        self.textfield_remove_ROIs = JTextField('')
+
         # add buttons here
         self.panel.add(Label("Name your image, or use filename"))
         self.panel.add(self.textfield2)
@@ -85,6 +89,8 @@ class gui(JFrame):
         self.panel.add(self.textfield4)
         self.panel.add(Label("Piramid to check (0:none; 1:highest)"))
         self.panel.add(self.textfield5)
+        self.panel.add(removeROIsButton)
+        self.panel.add(self.textfield_remove_ROIs)
         self.panel.add(cubifyROIButton)
         self.panel.add(saveButton)
         self.panel.add(quitButton)
@@ -184,7 +190,7 @@ class gui(JFrame):
                 self.lr_dapi.setTitle(self.name)
                 self.lr_dapi.show()
                 # reposition image
-                self.lr_dapi.getWindow().setLocation(420, 10)
+                self.lr_dapi.getWindow().setLocation(620, 10)
                 self.lr_dapi.updateAndDraw()
 
                 # clean
@@ -284,6 +290,52 @@ class gui(JFrame):
             #comp.show()
             #IJ.Stack.setDisplayMode("composite")
             # IJ.run("RGB")
+
+    def remove_corners(self, e):
+        # parse the input
+        # separated numbers by commas
+        if ',' in self.textfield_remove_ROIs.text:
+            rois_to_remove = [int(i) for i in self.textfield_remove_ROIs.text.split(',')]
+        
+        # a range
+        elif '-' in self.textfield_remove_ROIs.text:
+            range_nums = [int(i) for i in self.textfield_remove_ROIs.text.split('-')]
+            rois_to_remove = range(range_nums[0], range_nums[1] + 1)
+
+        # a single number
+        else:
+            try:
+                rois_to_remove = [int(self.textfield_remove_ROIs.text)]
+
+            except ValueError:
+                print('Cannot interpret your input, use commas or a dash for a range')
+                return
+
+        print('Removing ROIs: {}'.format(rois_to_remove))
+
+        for roi in sorted(rois_to_remove, reverse=True):
+            self.corners_cleaned.pop(roi - 1)
+
+        # get the overlay
+        self.ov = overlay_corners(self.corners_cleaned, self.L)
+        self.ov = overlay_roi(self.roi, self.ov)
+        # write roi name
+        self.ov = write_roi_numbers(self.ov, self.corners_cleaned, self.L)
+        # overlay
+        self.lr_dapi.setOverlay(self.ov)
+        self.lr_dapi.updateAndDraw()
+
+
+
+
+        # # get the overlay
+        # self.ov = overlay_corners(self.corners_cleaned, self.L)
+        # self.ov = overlay_roi(self.roi, self.ov)
+        # # write roi name
+        # self.ov = write_roi_numbers(self.ov, self.corners_cleaned, self.L)
+        # # overlay
+        # self.lr_dapi.setOverlay(self.ov)
+        # self.lr_dapi.updateAndDraw()
 
     def save_ROIs(self, e):
         # save the low resolution image for registration
