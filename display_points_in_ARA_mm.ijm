@@ -68,15 +68,28 @@ run("Set Scale...", "distance=0 known=0 pixel=1 unit=pixel");
 run("Grays");
 //run("Divide...", "value=2.5 stack");
 
-str2merch = "c1=spn c2=d1 c3=d2 c4=template.raw c5=undetermined create";
+//str2merch = "c1=spn c2=d1 c3=d2 c4=template.raw c5=undetermined create";
 
-run("Merge Channels...", str2merch);
-
+//run("Merge Channels...", str2merch);
+selectImage(cell_label);
 setBatchMode(false);
-
+//setBatchMode("show");
+selectImage(cell_label);
+selectImage("d1");
 //this needs modification
-run("Z Project...", "start=260 stop=300 projection=[Sum Slices]");
-run("Fire");
+selectImage("template.raw");
+run("Z Project...", "start=280 stop=280 projection=[Sum Slices]");
+rename("atlas_slice");
 
+selectImage("d1");
+run("Z Project...", "start=260 stop=300 projection=[Sum Slices]");
+rename("d1_proj");
+//run("Fire");
+selectImage("d2");
+run("Z Project...", "start=260 stop=300 projection=[Sum Slices]");
+rename("d2_proj");
+
+str2merch = "c1=d1_proj c2=d2_proj c3=atlas_slice create";
+run("Merge Channels...", str2merch);
 }
 
