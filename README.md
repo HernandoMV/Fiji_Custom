@@ -8,12 +8,17 @@ It opens the low resolution image of the selected set of piramidal images, gets 
 After this is done for every image in the dataset, use Group_convert_and_enhace.py, which transforms the images into 8-bit and normalizes the intensities by channel and by animal
 
 # Workflow for registration and analysis of PH3 data
+0. This assumes an acquisition of data with 4 channels in the slide scanner at 20x.
 1. Use 'Save_resolution_and_channel_from_czi.py' in Fiji to export slices. (Using channel 4 and 10um/px atm)
 2. Register using ABBA and save transformation field and atlas annotations: https://biop.github.io/ijp-imagetoatlas/registration.html#slices-registration
   - Flip the axis as the ABBA atlas is the other way around (check this once registration is made)
-  - Register once with affine, using channel 1 of the atlas (autofluorescence)
-  - Register with spline with 5 landmarks, and correct registration
+  - Register once with affine, using channel 1 of the atlas (autofluorescence). Set the proper background value!
+  - Register with spline with 10 landmarks, also correcting background and correct registration
   - Save inside the same folder as the original images
 3. Use 'CZI_SlideScanner_ROIsubdivider to generate the ROIs, loading the region of interest (e.g. Caudoputamen)
   - TODO: think about removing the part of the image that is not inside the ROI
   - Make this automatic and without the need to have a GUI
+4. Use 'Group_convert_and_enhace.py', which transforms the images into 8-bit and normalizes the intensities by channel and by animal
+5. Use ImageSequence_Downsampler.ijm to make a copy of both the DARPP-32 channels and the tdTomato (d2) channels in different directories (needed for cellfinder). Do not downsample as we are acquiring at 20x.
+6. Run cellpose (https://github.com/MouseLand/cellpose) on both directories: e.g. python -m cellpose --dir /home/hernandom/data/Microscopy_Data/Plasticity/PH3_inmuno/Processed_data/PH308/ROIs--Gce_processed--downsized-1_fileend-2.tif/ --save_tif --no_npy --diameter 38 --pretrained_model cyto --chan 0 --use_gpu
+7. Run Inmuno_4channels_XXXXXX.cpproj in CellProfiler_protocols, inside the CellProfiler_AnalysisPipelines repo.

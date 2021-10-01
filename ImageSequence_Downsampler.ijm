@@ -1,5 +1,5 @@
-how_much_to_resize = 3;
-file_ending = "2.tif";
+how_much_to_resize = 1;
+file_ending = "3.tif";
 
 
 inputdir = getDirectory("Select Directory containing your data");
@@ -10,6 +10,8 @@ outputdir = File.getParent(inputdir) +
 			File.getName(inputdir) + 
 			"--downsized-" + 
 			how_much_to_resize + 
+			"_fileend-" +
+			file_ending +
 			File.separator;
 
 File.makeDirectory(outputdir);

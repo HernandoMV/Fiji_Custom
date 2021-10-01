@@ -67,7 +67,7 @@ class gui(JFrame):
 
         # load ARA regions buttons
         loadARARegionButton = JButton("Load ARA region", actionPerformed=self.load_ARA_region)
-        self.textfield_ARA_region = JTextField('Caudoputamen')
+        self.textfield_ARA_region = JTextField('Both-Caudoputamen')
 
         # create a button to remove ROIs
         removeROIsButton = JButton("Select ROI numbers to remove", actionPerformed=self.remove_corners)
@@ -208,8 +208,10 @@ class gui(JFrame):
         regions_path = get_registered_regions_path(regions_folder, self.name)
 
         # get the roi from the region
+        # get the name of the region (assumes that L/R is written as well)
+        region_name = self.textfield_ARA_region.text.split('-')[1]
         self.roi = get_region_from_file(input_file=regions_path,
-                                        region_name=self.textfield_ARA_region.text,
+                                        region_name=region_name,
                                         image=self.lr_dapi,
                                         scale_factor=regions_transform_factor)
 
@@ -347,7 +349,7 @@ class gui(JFrame):
 
         # create a file to save the ROI coordinates
         # create output directory if it doesn't exist
-        self.roi_output_path = path.join(self.output_path, "000_manualROIs_info")
+        self.roi_output_path = path.join(self.output_path, "000_ManualROIs_info")
         if path.isdir(self.roi_output_path):
             print("Output path for ROIs information was already created")
         else:

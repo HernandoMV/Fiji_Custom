@@ -6,13 +6,13 @@
 
 macro "display_points_in_ARA" {
 // Default values
-Radius = 2;
+Radius = 3;
 // laptop:
 //ARA = "/C:/Users/herny/Desktop/SWC/Data/Anatomy/ARA_25_micron_mhd/template.mhd";
 // nailgun:
 ARA = "/home/hernandom/data/Anatomy/ARA_25_micron_mhd/template.mhd";
 FileDir = File.openDialog("choose the csv file");
-resolution = 1; //info is in pixels
+atlas_resolution = 25; //microns per pixel
 R = pow(Radius,2);
 
 setBatchMode(true);
@@ -24,8 +24,11 @@ cellseparator = ",";
 lines=split(File.openAsString(FileDir), lineseparator);
 
 // open the ARA template
-open(ARA)
+open(ARA);
 selectWindow("template.raw");
+//reverse
+run("Reverse");
+
 getDimensions(Width, Height, channels, Slices, frames);
 
 newImage("undetermined", "16-bit black", Width, Height, Slices);
@@ -40,18 +43,20 @@ for (i = 1; i < lines.length; i++) {
 	cell_label=items[3];
 	//print(cell_label);
 	selectImage(cell_label);
-	
-	x0 = floor(parseFloat(items[0])) * resolution; 
-	y0 = floor(parseFloat(items[1])) * resolution; 
-	z0 = floor(parseFloat(items[2])) * resolution;
-	//print(x0);
+	//information is in millimeters, in order ap, dv, -ml
+	trans_value = 1000 / atlas_resolution;
+	flipped_x0 = floor(parseFloat(items[2]) * trans_value); 
+	y0 = floor(parseFloat(items[1]) * trans_value); 
+	z0 = floor(parseFloat(items[0]) * trans_value);
+	//flip ml
+	x0 = Width - flipped_x0;
 
 	for (x=(x0-R);x<=(x0+R);x++) {
 		for (y=(y0-R);y<=(y0+R);y++) {
 			for (z=(z0-R);z<=(z0+R);z++) {
 				if (pow(x-x0,2)+pow(y-y0,2)+pow(z-z0,2) <= R) {
 					setSlice(z+1);
-					setPixel(x,y,30000);
+					setPixel(x,y,5000);
 				}	
 			}	
 		}
@@ -69,7 +74,8 @@ run("Merge Channels...", str2merch);
 
 setBatchMode(false);
 
-run("Z Project...", "start=230 stop=260 projection=[Sum Slices]");
+//this needs modification
+run("Z Project...", "start=260 stop=300 projection=[Sum Slices]");
 run("Fire");
 
 }
