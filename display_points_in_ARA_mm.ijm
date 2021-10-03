@@ -8,14 +8,14 @@ macro "display_points_in_ARA" {
 // Default values
 Radius = 3;
 // laptop:
-//ARA = "/C:/Users/herny/Desktop/SWC/Data/Anatomy/ARA_25_micron_mhd/template.mhd";
+ARA = "/C:/Users/herny/Desktop/SWC/Data/Anatomy/ARA_25_micron_mhd/template.mhd";
 // nailgun:
-ARA = "/home/hernandom/data/Anatomy/ARA_25_micron_mhd/template.mhd";
+//ARA = "/home/hernandom/data/Anatomy/ARA_25_micron_mhd/template.mhd";
 FileDir = File.openDialog("choose the csv file");
 atlas_resolution = 25; //microns per pixel
 R = pow(Radius,2);
 
-setBatchMode(true);
+setBatchMode(false);
 
 lineseparator = "\n";
 cellseparator = ",";
@@ -71,11 +71,11 @@ run("Grays");
 //str2merch = "c1=spn c2=d1 c3=d2 c4=template.raw c5=undetermined create";
 
 //run("Merge Channels...", str2merch);
-selectImage(cell_label);
+//selectImage(cell_label);
 setBatchMode(false);
 //setBatchMode("show");
-selectImage(cell_label);
-selectImage("d1");
+//selectImage(cell_label);
+//selectImage("d1");
 //this needs modification
 selectImage("template.raw");
 run("Z Project...", "start=280 stop=280 projection=[Sum Slices]");

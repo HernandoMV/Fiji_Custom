@@ -6,11 +6,11 @@
 
 macro "display_points_in_ARA" {
 // Default values
-Radius = 2;
+Radius = 3;
 // laptop:
-//ARA = "/C:/Users/herny/Desktop/SWC/Data/Anatomy/ARA_25_micron_mhd/template.mhd";
+ARA = "/C:/Users/herny/Desktop/SWC/Data/Anatomy/ARA_25_micron_mhd/template.mhd";
 // nailgun:
-ARA = "/home/hernandom/data/Anatomy/ARA_25_micron_mhd/template.mhd";
+//ARA = "/home/hernandom/data/Anatomy/ARA_25_micron_mhd/template.mhd";
 FileDir = File.openDialog("choose the csv file");
 resolution = 1; //info is in pixels
 R = pow(Radius,2);
@@ -51,7 +51,7 @@ for (i = 1; i < lines.length; i++) {
 			for (z=(z0-R);z<=(z0+R);z++) {
 				if (pow(x-x0,2)+pow(y-y0,2)+pow(z-z0,2) <= R) {
 					setSlice(z+1);
-					setPixel(x,y,30000);
+					setPixel(x,y,5000);
 				}	
 			}	
 		}
