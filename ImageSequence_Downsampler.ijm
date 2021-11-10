@@ -1,5 +1,5 @@
 how_much_to_resize = 1;
-file_ending = "3.tif";
+file_ending = "2.tif";
 
 
 inputdir = getDirectory("Select Directory containing your data");
