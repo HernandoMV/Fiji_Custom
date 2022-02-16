@@ -9,6 +9,8 @@ After this is done for every image in the dataset, use Group_convert_and_enhace.
 
 # Workflow for registration and analysis of PH3 data
 0. This assumes an acquisition of data with 4 channels in the slide scanner at 20x.
+  - Make sure the name of the .czi files is 'Animal-X-Y-Z_Experimental-Procedure_slide-X.czi
+  - The underscores are very important. Don't have spaces. The last part (e.g. '..._slide-1') is also crucial.
 1. Use 'Save_resolution_and_channel_from_czi.py' in Fiji to export slices. (Using channel 4 and 10um/px atm)
 2. Register using ABBA and save transformation field and atlas annotations: https://biop.github.io/ijp-imagetoatlas/registration.html#slices-registration
   - Create a folder called 'QuPath' inside the 'Registration' folder just created by the previous script

@@ -10,7 +10,7 @@ Radius = 3;
 // laptop:
 ARA = "/C:/Users/herny/Desktop/SWC/Data/Anatomy/ARA_25_micron_mhd/template.mhd";
 // nailgun:
-//ARA = "/home/hernandom/data/Anatomy/ARA_25_micron_mhd/template.mhd";
+ARA = "/home/hernandom/data/Anatomy/ARA_25_micron_mhd/template.mhd";
 FileDir = File.openDialog("choose the csv file");
 atlas_resolution = 25; //microns per pixel
 R = pow(Radius,2);
