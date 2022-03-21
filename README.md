@@ -17,6 +17,7 @@ After this is done for every image in the dataset, use Group_convert_and_enhace.
   - Open QuPath, and drag the folder to create a new project. Add the images created by the script, selecting BioFormats-builder. Close QuPath.
   - Open ABBA in Fiji and import the QuPath project.
   - Flip the axis as the ABBA atlas is the other way around
+  - Set slice thickness to 1 micrometer!
   - Register once with affine, using channel 1 of the atlas (autofluorescence). Set the proper background value!
   - Register with spline with 10 landmarks, also correcting background and correct registration
   - Export regions to file, and export atlas coordinates to imageJ.
