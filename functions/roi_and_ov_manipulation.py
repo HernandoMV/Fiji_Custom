@@ -8,6 +8,10 @@ from java.awt import Color, Font
 from ij.plugin.frame import RoiManager
 from ij.process import FloatProcessor, ImageConverter
 from ij import ImagePlus, IJ
+from os import path
+import sys
+sys.path.append(path.abspath(path.dirname(__file__)))
+from functions.image_manipulation import ARAcoords_of_point
 
 
 def get_corners(roi, L):
@@ -30,7 +34,6 @@ def get_corners(roi, L):
     corners.pop(0)
 
     return corners
-
 
 
 def overlay_corners(corners, L):
@@ -124,3 +127,53 @@ def get_region_from_file(input_file, region_name, image, scale_factor):
     rm_regions.close()
 
     return roi
+
+
+def get_ARA_roi(input_file, region_name):
+    # load the roi manager
+    rm_regions = RoiManager()
+    # load the regions file
+    rm_regions.runCommand("Open", input_file)
+    # get a list of the names
+    regions_number = rm_regions.getCount()
+    region_names = []
+    for i in range(regions_number):
+        region_names.append(rm_regions.getName(i))
+    # check that there is a roi with that name
+    region_index = region_names.index(region_name)
+    reg_roi = rm_regions.getRoi(region_index)
+    # close roi manager
+    rm_regions.close()
+    return reg_roi
+
+
+def roi_to_ARA(roi, coords, atlas_resolution=25., ap_offset=0.):
+    # get ROI xy coordinates
+    # roi_polygon = roi.getPolygon()
+    # xs = roi_polygon.xpoints
+    # ys = roi_polygon.ypoints
+    # point_list = zip(xs,ys)
+    point_list = roi.getContainedPoints()
+    # find the ARA xyz coordinates
+    xt = []
+    yt = []
+    zt = []
+    for point in point_list:
+        point_a = [point.x, point.y]
+        z, y, x = ARAcoords_of_point(point_a, coords, atlas_resolution)
+        # append
+        xt.append(x)
+        yt.append(y)
+        zt.append(z)
+
+    # get the points
+    reg_filling = list(zip(xt, yt))
+
+    # adjust offset
+    ozt = [int(ap_offset * 1000 / atlas_resolution) + z for z in zt]
+
+    # start with z as the mean
+    mean_z = int(sum(ozt)/len(ozt))
+
+    return reg_filling, mean_z, ozt
+

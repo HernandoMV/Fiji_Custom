@@ -3,11 +3,14 @@
 # This scripts registers lesion ROIs to ARA
 
 from ij import IJ
+from ij.plugin.frame import RoiManager
 import glob
 from os import path
 import sys
 sys.path.append(path.abspath(path.dirname(__file__)))
-from ij.plugin.frame import RoiManager
+from functions.roi_and_ov_manipulation import roi_to_ARA
+from functions.image_manipulation import roi_from_mask, paint_atlas, save_interpolated
+from functions.text_manipulation import get_lesion_coord_file
 
 ATLAS_RESOLUTION = float(25) # um/px
 
@@ -18,93 +21,7 @@ REGISTRATION_COORDS_FILE_ENDING = '_ch0_Coords.tif'
 AP_OFFSET = 0.
 
 ATLAS_FILE = '/home/hernandom/data/Anatomy/ARA_25_micron_mhd/template.tif'
-
-def roi_to_ARA(roi, coords):
-    # get ROI xy coordinates
-    # roi_polygon = roi.getPolygon()
-    # xs = roi_polygon.xpoints
-    # ys = roi_polygon.ypoints
-    # point_list = zip(xs,ys)
-    point_list = roi.getContainedPoints()
-    # find the ARA xyz coordinates
-    xt = []
-    yt = []
-    zt = []
-    for point in point_list:
-        point_a = [point.x, point.y]
-        z, y, x = ARAcoords_of_point(point_a, coords)
-        # append
-        xt.append(x)
-        yt.append(y)
-        zt.append(z)
-
-    # get the points
-    reg_filling = list(zip(xt, yt))
-
-    # adjust offset
-    ozt = [int(AP_OFFSET * 1000 / ATLAS_RESOLUTION) + z for z in zt]
-
-    # start with z as the mean
-    mean_z = int(sum(ozt)/len(ozt))
-
-    return reg_filling, mean_z, ozt
-
-
-def ARAcoords_of_point(point, coords):
-    # order is ap, dv, ml
-    reg_coords = []
-    for i in range(1,4):
-        coords.setSlice(i)
-        ip = coords.getProcessor()
-        coord = ip.getPixelValue(point[0], point[1])
-        # Convert to pixel coordinates and append
-        sc_c = int(coord * 1000 / ATLAS_RESOLUTION)
-
-        reg_coords.append(sc_c)
-
-    return reg_coords[0], reg_coords[1], reg_coords[2]
-
-
-def paint_reg_roi(registered_roi, sample_im, mask_name):
-    # create new
-    imp = IJ.createImage("roi_mask_" + mask_name, "8-bit black", sample_im.getWidth(), sample_im.getHeight(), 1)
-    ip = imp.getProcessor()
-    # paint pixels
-    for pixel in registered_roi:
-        ip.set(pixel[0], pixel[1], 255)
-    # erode and dilate to clean 
-    IJ.run(imp, "Erode", "")
-    IJ.run(imp, "Dilate", "")
-
-    return imp
-
-
-def roi_from_mask(mask, coords_im, mask_name):
-    # paint the points in a new image to see how well reconstituted it is
-    imp = paint_reg_roi(mask, coords_im, mask_name)
-    imp.show()
-    imp_tit = imp.getTitle()
-    rm = RoiManager()
-    IJ.selectWindow(imp_tit)
-    mask = IJ.getImage()
-    IJ.setThreshold(mask, 1, 255)
-    IJ.run(mask, "Create Selection", "")
-    IJ.selectWindow(imp_tit)
-    rm.runCommand("add")
-    IJ.selectWindow(imp_tit)
-    IJ.run("Close")
-    roi = rm.getRoi(0)
-    rm.close()
-    
-    return roi
-
-
-def paint_atlas(imp, roi, slice_num):
-    ip = imp.getProcessor()
-    pixels = roi.getContainedPoints()
-    for idx, point in enumerate(pixels):
-        imp.setSlice(slice_num)
-        ip.set(point.x, point.y, 255)
+ATLAS_FILE = r'C:\Users\herny\Desktop\SWC\Data\Anatomy\ARA_25_micron_mhd\template.tif'
 
 
 # Main
@@ -112,14 +29,29 @@ if __name__ in ['__builtin__', '__main__']:
     IJ.run("Close All")
     # get a directory and find the list of candidate ROIs
     input_path= IJ.getDirectory('choose a path containing your ROIs')
+    # define the output directory as the parent directory
+    output_path = path.dirname(path.dirname(input_path))
+    # get the name of the mouse
+    mouse_name = path.basename(output_path)
+    print('Analysing mouse {}'.format(mouse_name))
+    # check if the registered image folder is there
+    res = input_path.split('_')[-1]
+    reg_path = path.join(output_path, 'Registration',
+                         'Slices_for_ARA_registration_' + res)
+    if path.exists(reg_path):
+        print('Found registration output path.')
+    else:
+        sys.exit('No registration folder found')
+        
     candidate_ROIs = []
     for file in glob.glob(input_path + '*' + ROI_FILE_ENDING):
         candidate_ROIs.append(file)
 
-    # check that it has its slice has been registered
+    # check that this slice has been registered
     ROIs_to_process = []
     for roi in candidate_ROIs:
-        coords_file = roi.split(ROI_FILE_ENDING)[0] + REGISTRATION_COORDS_FILE_ENDING
+        coords_file = get_lesion_coord_file(roi, ROI_FILE_ENDING,
+                                            REGISTRATION_COORDS_FILE_ENDING, reg_path)
         if not path.exists(coords_file):
             print('No registration file found for ROI {}'.format(path.basename(roi)))
         else:
@@ -137,7 +69,8 @@ if __name__ in ['__builtin__', '__main__']:
         # get the number of ROIs in the file
         rois_number = rm.getCount()
         # open the coords file
-        coords_file = ROI.split(ROI_FILE_ENDING)[0] + REGISTRATION_COORDS_FILE_ENDING
+        coords_file = get_lesion_coord_file(ROI, ROI_FILE_ENDING,
+                                            REGISTRATION_COORDS_FILE_ENDING, reg_path)
         coords_im = IJ.openImage(coords_file)
         # coords_im.show()
 
@@ -148,14 +81,14 @@ if __name__ in ['__builtin__', '__main__']:
             # get name
             roi_name = rm.getName(roi_index)
             # paint the roi, register the points, and reconstitute a ROI
-            registered_fill, ap_position, all_zs = roi_to_ARA(roi_to_register, coords_im)
+            registered_fill, ap_position, all_zs = roi_to_ARA(roi_to_register, coords_im,
+                                                              ATLAS_RESOLUTION, AP_OFFSET)
             # add the z location in the name
             names.append(roi_name+'-reg_z-'+str(ap_position))
             # rm.addRoi(registered_roi)
             filling_list.append(registered_fill)
 
         rm.close()
-        coords_im.flush()
 
         # append them to list
         for idx, mask in enumerate(filling_list):
@@ -165,16 +98,18 @@ if __name__ in ['__builtin__', '__main__']:
             reg_roi.setName(names[idx])
             # append to list
             registered_rois.append(reg_roi)
-        
-    # add them to roimanager in the atlas
-
-    rm = RoiManager()
+         
+        coords_im.flush()
+         
+    # add the cells and lesion to roimanager and paint the atlas
     atlas = IJ.openImage(ATLAS_FILE)
-    IJ.run(atlas, "Reverse", "")
-    atlas.show()
-    # create a new stack to paint the rois
-    pa_im = IJ.createImage("painted_atlas", "8-bit black", atlas.getWidth(), atlas.getHeight(), atlas.getNSlices())
-
+    # IJ.run(atlas, "Reverse", "")
+    # atlas.show()
+    
+    # create a new stack to paint the rois for the lesion
+    pa_les = IJ.createImage("lesion_binary", "8-bit black",
+                            atlas.getWidth(), atlas.getHeight(), atlas.getNSlices())
+    rm = RoiManager()
     for roi in registered_rois:
         r_name = roi.getName()
         if 'lesion-reg_z-' in r_name:
@@ -182,6 +117,44 @@ if __name__ in ['__builtin__', '__main__']:
             # atlas.setSliceWithoutUpdate(slice_num)
             roi.setPosition(slice_num)
             rm.addRoi(roi)
-            paint_atlas(pa_im, roi, slice_num)
-        
-    pa_im.show()
+            paint_atlas(pa_les, roi, slice_num)
+    # save rois and stack
+    rm.runCommand("Select All")
+    fo_basename = path.join(output_path, mouse_name + '_lesion-analysis_' + res[:-1])
+    rm.runCommand("Save", fo_basename + '_lesion-ROIs.zip')
+    rm.close()
+    IJ.saveAsTiff(pa_les, fo_basename + '_lesion-in-atlas.tif')
+    
+    # create a new stack to paint the rois for the cells
+    pa_cel = IJ.createImage("cells_binary", "8-bit black",
+                           atlas.getWidth(), atlas.getHeight(), atlas.getNSlices())
+    rm = RoiManager()
+    for roi in registered_rois:
+        r_name = roi.getName()
+        if 'cells-reg_z-' in r_name:
+            slice_num = int(r_name.split('-')[-1])
+            # atlas.setSliceWithoutUpdate(slice_num)
+            roi.setPosition(slice_num)
+            rm.addRoi(roi)
+            paint_atlas(pa_cel, roi, slice_num)
+    # save rois and stack
+    rm.runCommand("Select All")
+    rm.runCommand("Save", fo_basename + '_cells-ROIs.zip')
+    rm.close()
+    IJ.saveAsTiff(pa_cel, fo_basename + '_cells-in-atlas.tif')
+    
+    # interpolate with 3D suite
+    pa_cel.show()
+    pa_les.show()
+    save_interpolated(pa_cel, fo_basename + '_cells-in-atlas-interpolated.tif')
+    save_interpolated(pa_les, fo_basename + '_lesion-in-atlas-interpolated.tif')
+    
+    # close
+    pa_cel.close()
+    pa_les.close()
+    pa_cel.flush()
+    pa_les.flush()
+    atlas.close()
+    atlas.flush()
+    
+    print('Done')

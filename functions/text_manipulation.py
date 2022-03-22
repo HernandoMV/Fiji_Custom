@@ -55,3 +55,10 @@ def get_registered_regions_path(regions_folder, slice_name):
     return regions_file_name
 
 
+def get_lesion_coord_file(full_file_path, file_end, coords_file_ending, reg_path):
+    f_name = path.basename(full_file_path)
+    slice_name = f_name.split(file_end)[0] + '.tif'
+    cf_name = slice_name + coords_file_ending
+    coords_file = reg_path + cf_name
+    
+    return coords_file
