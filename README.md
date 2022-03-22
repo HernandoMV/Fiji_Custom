@@ -37,6 +37,6 @@ After this is done for every image in the dataset, use Group_convert_and_enhace.
   - Make sure the name of the .czi files is 'Animal-X-Y-Z_Experimental-Procedure_slide-X.czi
   - The underscores are very important. Don't have spaces. The last part (e.g. '..._slide-1') is also crucial.
 1. Use 'Save_resolution_two-channels_from_czi.py in Fiji. 10um/px resolution
-2. Register with ABBA as in the workflow above, but DO NOT tilt the atlas in DV.
+2. Register with ABBA as in the workflow above, but DO NOT tilt the atlas much.
 3. Get the lesioned area with get_lesion_area.py
 4. Register ROIs to ARA with register_ROIs_to_ARA.py
