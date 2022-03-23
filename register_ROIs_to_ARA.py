@@ -31,9 +31,6 @@ if __name__ in ['__builtin__', '__main__']:
     input_path= IJ.getDirectory('choose a path containing your ROIs')
     # define the output directory as the parent directory
     output_path = path.dirname(path.dirname(input_path))
-    # get the name of the mouse
-    mouse_name = path.basename(output_path)
-    print('Analysing mouse {}'.format(mouse_name))
     # check if the registered image folder is there
     res = input_path.split('_')[-1]
     reg_path = path.join(output_path, 'Registration',
@@ -46,7 +43,11 @@ if __name__ in ['__builtin__', '__main__']:
     candidate_ROIs = []
     for file in glob.glob(input_path + '*' + ROI_FILE_ENDING):
         candidate_ROIs.append(file)
-
+        
+    # get the name of the mouse from the last file
+    mouse_name = '_'.join(path.basename(file).split('_')[0:2])
+    print('Analysing mouse {}'.format(mouse_name))
+    
     # check that this slice has been registered
     ROIs_to_process = []
     for roi in candidate_ROIs:
