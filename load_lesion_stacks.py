@@ -35,7 +35,7 @@ if __name__ in ['__builtin__', '__main__']:
     grouped_lesions.show()
     # number of animals
     n_ans = len(stacks_list)
-    div_str = "value=" + str(n_ans + 1) + " stack"
+    div_str = "value=" + str(n_ans) + " stack"
     # open each stack and divide
     for stack_path in stacks_list:
         stack = IJ.openImage(stack_path)

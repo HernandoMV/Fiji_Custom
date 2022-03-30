@@ -45,6 +45,14 @@ def apply_threshold(image_title, thrvalue, maxval):
     # thr_image = Duplicator().run(im)
     # thr_image.setTitle()
     # imp = im.getProcessor()
+    
+    # override the thrvalue passed if it is higher that the maximum
+    # this is to avoid problems of not creating a selection and therefore a roi
+    # this might create issues if the image is flat in intensity
+    maxpix = max(im.getProcessor().getPixels())
+    if maxpix < thrvalue:
+        thrvalue = maxpix
+        print('Threshold value overruled to {}'.format(maxpix))
     IJ.setThreshold(im, thrvalue, maxval)
     IJ.run(im, "Create Selection", "")
     # imp.setThreshold(thrvalue, maxval, 0)
