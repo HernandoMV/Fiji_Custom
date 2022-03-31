@@ -24,7 +24,10 @@ if __name__ in ['__builtin__', '__main__']:
 
         for file in files:
             print('Found file for animal {}'.format(folder))
-            stacks_list.append(file)
+            # get if it is a lesion or control
+            if os.path.basename(file).split('_')[1] == 'lesion':
+                print('    it is a lesioned animal.')
+                stacks_list.append(file)
 
     # open atlas
     atlas = IJ.openImage(ATLAS_FILE)
@@ -42,7 +45,7 @@ if __name__ in ['__builtin__', '__main__']:
         stack.show()
         IJ.run(stack, "Divide...", div_str)
         # add it to the grouped lesions
-        ImageCalculator.run(grouped_lesions, stack, "Add stack");
+        ImageCalculator.run(grouped_lesions, stack, "Add stack")
         # close
         IJ.selectWindow(stack.getTitle())
         IJ.run("Close")  
