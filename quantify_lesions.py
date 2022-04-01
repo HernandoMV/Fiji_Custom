@@ -9,6 +9,7 @@ import glob
 
 FILE_ENDING = 'cells-ROIs.zip'
 CAUDOPUTAMEN_FILE = r'C:\Users\herny\Desktop\SWC\Data\Anatomy\AllanBrainAtlas_Images\Caudoputamen_25umpx.tif'
+AUD_FILE = r'C:\Users\herny\Desktop\SWC\Data\Anatomy\AllanBrainAtlas_Images\Vis_Aud_merge\AUD_thresholded_gaussian_25umpx-Caudoputamen.tif'
 
 # quantify roi
 if __name__ in ['__builtin__', '__main__']:
@@ -30,7 +31,7 @@ if __name__ in ['__builtin__', '__main__']:
             roi_file_list.append(file)
 
     #Open caudoputamen mask
-    cp_imp = IJ.openImage(CAUDOPUTAMEN_FILE)    
+    cp_imp = IJ.openImage(CAUDOPUTAMEN_FILE)
     # cp_imp.show()
     # Open file to write
     fout_path = os.path.join(input_path, os.path.basename(__file__.split('.')[0]) + '_output.txt')
@@ -67,7 +68,7 @@ if __name__ in ['__builtin__', '__main__']:
             # quantify caudoputamen area of the same slice
             cp_imp.setSlice(int(atlas_position))
             cp_arr = cp_imp.getProcessor().getFloatArray()
-            caudoputamen_pixel_number = sum([sum(x) for x in cp_arr])/255
+            caudoputamen_pixel_number = sum([sum(x) for x in cp_arr]) / 255
             # calculate proportion
             proportion_intact = float(intact_cells_pixel_number) / caudoputamen_pixel_number
             # write info to text file
@@ -82,10 +83,39 @@ if __name__ in ['__builtin__', '__main__']:
         
         rm.close()
     
-    # close caudoputamen file
+    # generate an extra file with information about the auditory projections
+    print('Generating auditory projections coverage file...')
+    aud_imp = IJ.openImage(AUD_FILE)
+    fouttwo_path = os.path.join(input_path, 'auditory_projections_caudoputamen_proportions.txt')
+    outft = open(fouttwo_path, 'w')
+    outft.write(','.join(['25umpx_atlas_position',
+                          'aud_proj_pixel_number',
+                          'caudoputamen_pixel_number',
+                          'coverage']))
+    # slices of image
+    nsl = aud_imp.getNSlices()
+    for sl in range(1, nsl + 1):
+        print('{} / {}'.format(sl, nsl))
+        aud_imp.setSlice(sl)
+        aud_arr = aud_imp.getProcessor().getFloatArray()
+        aud_proj_pixel_number = sum([sum(x) for x in aud_arr]) / 255
+        if aud_proj_pixel_number > 0:
+            cp_imp.setSlice(int(sl))
+            cp_arr = cp_imp.getProcessor().getFloatArray()
+            caudoputamen_pixel_number = sum([sum(x) for x in cp_arr]) / 255
+            # calculate proportion, multiplied by 2 as it is unilateral
+            coverage = 2 * float(aud_proj_pixel_number) / caudoputamen_pixel_number
+            # write info to text file
+            outft.write('\n' + ','.join([str(sl),
+                                        str(aud_proj_pixel_number),
+                                        str(caudoputamen_pixel_number),
+                                        str(coverage)]))
+
+    # close images
     cp_imp.flush()
-    # close text file
+    aud_imp.flush()
+    # close text files
     outf.close()
-    
+    outft.close()
+
     print('Done')
-    

@@ -40,3 +40,5 @@ After this is done for every image in the dataset, use Group_convert_and_enhace.
 2. Register with ABBA as in the workflow above, but DO NOT tilt the atlas much.
 3. Get the lesioned area with get_lesion_area.py
 4. Register ROIs to ARA with register_ROIs_to_ARA.py
+5. Quantify the lesions using quantify_lesions.py
+6. Plot and visualise results using load_lesion_stacks.py and plot_lesions.py
